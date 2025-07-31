@@ -49,14 +49,14 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * Node that "wraps" AST nodes of interest (Nodes that correspond to expressions
  * in our case as defined by the filter given to the {@link Instrumenter} in
- * {@link SimpleCoverageInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) }
- * ), and informs the {@link SimpleCoverageInstrument} that we
- * {@link SimpleCoverageInstrument#addCovered(SourceSection) covered} it's
+ * {@link CoverageInstrument#onCreate(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env) }
+ * ), and informs the {@link CoverageInstrument} that we
+ * {@link CoverageInstrument#addCovered(SourceSection) covered} it's
  * {@link #instrumentedSourceSection source section}.
  */
 final class CoverageNode extends ExecutionEventNode {
 
-    private final SimpleCoverageInstrument instrument;
+    private final CoverageInstrument instrument;
     @CompilerDirectives.CompilationFinal
     private boolean covered;
 
@@ -65,7 +65,7 @@ final class CoverageNode extends ExecutionEventNode {
      */
     private final SourceSection instrumentedSourceSection;
 
-    CoverageNode(SimpleCoverageInstrument instrument, SourceSection instrumentedSourceSection) {
+    CoverageNode(CoverageInstrument instrument, SourceSection instrumentedSourceSection) {
         this.instrument = instrument;
         this.instrumentedSourceSection = instrumentedSourceSection;
     }
@@ -75,8 +75,8 @@ final class CoverageNode extends ExecutionEventNode {
      * we can intercept. The one of interest to us is
      * {@link ExecutionEventNode#onReturnValue(com.oracle.truffle.api.frame.VirtualFrame, Object) }
      * as we wish to track this nodes {@link #instrumentedSourceSection} in the
-     * {@link SimpleCoverageInstrument#coverageMap} only once the node is
-     * successfully executed (as oppose to, for example,
+     * {@link CoverageInstrument#coverageMap} only once the node is successfully
+     * executed (as oppose to, for example,
      * {@link ExecutionEventNode#onReturnExceptional(com.oracle.truffle.api.frame.VirtualFrame, Throwable) }
      * ).
      *

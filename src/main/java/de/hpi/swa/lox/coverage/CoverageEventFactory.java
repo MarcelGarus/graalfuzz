@@ -48,16 +48,16 @@ import com.oracle.truffle.api.source.SourceSection;
 /**
  * A factory for nodes that track coverage
  *
- * Because we  {@link SimpleCoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+ * Because we null {@link CoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
  * attached} an instance of this factory, each time a AST node of interest is
  * created, it is instrumented with a node created by this factory.
  */
 final class CoverageEventFactory implements ExecutionEventNodeFactory {
 
-    private SimpleCoverageInstrument simpleCoverageInstrument;
+    private CoverageInstrument instrument;
 
-    CoverageEventFactory(SimpleCoverageInstrument simpleCoverageInstrument) {
-        this.simpleCoverageInstrument = simpleCoverageInstrument;
+    CoverageEventFactory(CoverageInstrument instrument) {
+        this.instrument = instrument;
     }
 
     /**
@@ -65,7 +65,8 @@ final class CoverageEventFactory implements ExecutionEventNodeFactory {
      * {@link SourceSection} that our node is instrumenting.
      * @return An {@link ExecutionEventNode}
      */
+    @Override
     public ExecutionEventNode create(final EventContext ec) {
-        return new CoverageNode(simpleCoverageInstrument, ec.getInstrumentedSourceSection());
+        return new CoverageNode(instrument, ec.getInstrumentedSourceSection());
     }
 }

@@ -14,7 +14,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
-import de.hpi.swa.lox.coverage.SimpleCoverageInstrument;
+import de.hpi.swa.lox.coverage.CoverageInstrument;
 
 public class LoxMain extends AbstractLanguageLauncher {
 
@@ -73,7 +73,7 @@ public class LoxMain extends AbstractLanguageLauncher {
     @Override
     protected void launch(Builder contextBuilder) {
         System.out.println("Launch called. Adding Instrument");
-        contextBuilder.option(SimpleCoverageInstrument.ID, "true");
+        contextBuilder.option(CoverageInstrument.ID, "true");
 
         Source source = null;
         try (var context = contextBuilder.build()) {

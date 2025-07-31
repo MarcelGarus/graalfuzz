@@ -64,7 +64,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Example for simple version of an expression coverage instrument.
+ * Example for version of an expression coverage instrument.
  *
  * The instrument {@link #coverageMap keeps track} of all loaded
  * {@link SourceSection}s and all coverd (i.e. executed) {@link SourceSection}s
@@ -77,21 +77,21 @@ import com.oracle.truffle.api.source.SourceSection;
  * {@link Registration#version} for the instrument. It also specifies all
  * service classes that the instrument exports to other instruments and,
  * exceptionally, tests. In this case the instrument itself is exported as a
- * service and used in the SimpleCoverageInstrumentTest.
+ * service and used in the CoverageInstrumentTest.
  *
  * NOTE: Fot the registration annotation to work the truffle dsl processor must
  * be used (i.e. Must be a dependency. This is so in this maven project, as can
  * be seen in the pom file.
  */
-@Registration(id = SimpleCoverageInstrument.ID, name = "Simple Code Coverage", version = "0.1", services = SimpleCoverageInstrument.class)
-public final class SimpleCoverageInstrument extends TruffleInstrument {
+@Registration(id = CoverageInstrument.ID, name = " Code Coverage", version = "0.1", services = CoverageInstrument.class)
+public final class CoverageInstrument extends TruffleInstrument {
 
     // @formatter:off
     /**
      * Look at {@link #onCreate(Env)} and {@link #getOptionDescriptors()} for
      * more info.
      */
-    @Option(name = "", help = "Enable Simple Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "", help = "Enable  Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
     /**
@@ -102,7 +102,7 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
     static final OptionKey<Boolean> PRINT_COVERAGE = new OptionKey<>(true);
     // @formatter:on
 
-    public static final String ID = "simple-code-coverage";
+    public static final String ID = "-code-coverage";
 
     /**
      * The instrument keeps a mapping between a {@link Source} and
@@ -124,15 +124,14 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * practice is to use the {@link Option} system to enable and configure the
      * instrument, as is done in this method. Defining {@link Option}s as is
      * shown in {@link #ENABLED} and {@link #PRINT_COVERAGE}, and their usage
-     * can be seen in the SimpleCoverageInstrumentTest when the context is being
-     * created. Using them from the command line is shown in the simpletool.sh
-     * script.
+     * can be seen in the CoverageInstrumentTest when the context is being
+     * created. Using them from the command line is shown in the tool.sh script.
      *
      * @param env the environment for the instrument. Allows us to read the
      * {@link Option}s, input and output streams to be used for reading and
      * writing, as well as
      * {@link Env#registerService(java.lang.Object) registering} and null null
-     * null null null null null null null null null     {@link Env#lookup(com.oracle.truffle.api.InstrumentInfo, java.lang.Class) looking
+     * null null null null null null null null null null null     {@link Env#lookup(com.oracle.truffle.api.InstrumentInfo, java.lang.Class) looking
      *            up} services.
      */
     @Override
@@ -163,14 +162,14 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * {@link Instrumenter}, which allows us to specify in which way we wish to
      * instrument the AST.
      *
-     * Firstly, we null null null null null null null null null null null     {@link Instrumenter#attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter, com.oracle.truffle.api.instrumentation.LoadSourceListener, boolean)
+     * Firstly, we null null null null null null null null null null null null null     {@link Instrumenter#attachLoadSourceListener(com.oracle.truffle.api.instrumentation.SourceFilter, com.oracle.truffle.api.instrumentation.LoadSourceListener, boolean)
      * attach attach} our own {@link GatherSourceSectionsListener listener} to
      * loading source section events. Each the a {@link SourceSection} is
      * loaded, our listener is notified, so our instrument is always aware of
      * all loaded code. Note that we have specified the filter defined earlier
      * as a constraint, so we are not notified if internal code is loaded.
      *
-     * Secondly, we null null null null null null null null null null null     {@link Instrumenter#attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter, com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory)
+     * Secondly, we null null null null null null null null null null null null null     {@link Instrumenter#attachExecutionEventFactory(com.oracle.truffle.api.instrumentation.SourceSectionFilter, com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory)
      * attach} our {@link CoverageEventFactory node factory} using the same
      * filter. This factory produces {@link Node Truffle Nodes} that will be
      * inserted into the AST at positions specified by the filter. Each of the
@@ -260,13 +259,13 @@ public final class SimpleCoverageInstrument extends TruffleInstrument {
      * specify which {@link Option}s. The {@link OptionDescriptors} is
      * automatically generated from this class due to the {@link Option}
      * annotation. In our case, this is the
-     * {@code SimpleCodeCoverageInstrumentOptionDescriptors} class.
+     * {@code CodeCoverageInstrumentOptionDescriptors} class.
      *
      * @return The class generated by the {@link Option.Group} annotation
      */
     @Override
     protected OptionDescriptors getOptionDescriptors() {
-        return new SimpleCoverageInstrumentOptionDescriptors();
+        return new CoverageInstrumentOptionDescriptors();
     }
 
     /**
