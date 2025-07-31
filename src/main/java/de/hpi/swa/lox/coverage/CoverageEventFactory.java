@@ -1,6 +1,5 @@
-
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,19 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.hpi.swa.lox.test;
+package de.hpi.swa.lox.coverage;
 
-import org.junit.Test;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.source.SourceSection;
 
-public class PrintTest extends AbstractLoxTest {
-    @Test
-    public void printTrue() {
-        runAndExpect("print true", "print true;", "true\n");
-        runAndExpect("twice print true", "print true; print true;", "true\ntrue\n");
+/**
+ * A factory for nodes that track coverage
+ *
+ * Because we  {@link SimpleCoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+ * attached} an instance of this factory, each time a AST node of interest is
+ * created, it is instrumented with a node created by this factory.
+ */
+final class CoverageEventFactory implements ExecutionEventNodeFactory {
+
+    private SimpleCoverageInstrument simpleCoverageInstrument;
+
+    CoverageEventFactory(SimpleCoverageInstrument simpleCoverageInstrument) {
+        this.simpleCoverageInstrument = simpleCoverageInstrument;
     }
 
-    @Test
-    public void printFalse() {
-        runAndExpect("printFalse", "print false;", "false\n");
+    /**
+     * @param ec context of the event, used in our case to lookup the
+     * {@link SourceSection} that our node is instrumenting.
+     * @return An {@link ExecutionEventNode}
+     */
+    public ExecutionEventNode create(final EventContext ec) {
+        return new CoverageNode(simpleCoverageInstrument, ec.getInstrumentedSourceSection());
     }
 }
