@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.hpi.swa.lox.coverage;
+package de.hpi.swa.coverage;
 
 import java.io.PrintStream;
 import java.util.Collections;

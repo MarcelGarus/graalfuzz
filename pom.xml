@@ -65,7 +65,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <mainClass>de.hpi.swa.lox.cli.LoxMain</mainClass>
+                    <mainClass>de.hpi.swa.cli.LoxMain</mainClass>
                 </configuration>
             </plugin>
         </plugins>
@@ -195,7 +195,7 @@
                         </executions>
                         <configuration>
                             <imageName>lox</imageName>
-                            <mainClass>de.hpi.swa.lox.cli.LoxMain</mainClass>
+                            <mainClass>de.hpi.swa.cli.LoxMain</mainClass>
                             <fallback>false</fallback>
                             <verbose>true</verbose>
                         </configuration>

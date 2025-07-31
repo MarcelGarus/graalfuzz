@@ -38,55 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.hpi.swa.lox.coverage;
+package de.hpi.swa.coverage;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * Contains per {@link com.oracle.truffle.api.source.Source} coverage by keeping
- * track of loaded and covered
- * {@link com.oracle.truffle.api.source.SourceSection}s.
+ * A factory for nodes that track coverage
+ *
+ * Because we null {@link CoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
+ * attached} an instance of this factory, each time a AST node of interest is
+ * created, it is instrumented with a node created by this factory.
  */
-public final class Coverage {
+final class CoverageEventFactory implements ExecutionEventNodeFactory {
 
-    private final Set<SourceSection> loaded = new HashSet<>();
-    private final Set<SourceSection> covered = new HashSet<>();
+    private CoverageInstrument instrument;
 
-    void addCovered(SourceSection sourceSection) {
-        covered.add(sourceSection);
+    CoverageEventFactory(CoverageInstrument instrument) {
+        this.instrument = instrument;
     }
 
-    void addLoaded(SourceSection sourceSection) {
-        loaded.add(sourceSection);
-    }
-
-    private Set<SourceSection> nonCoveredSections() {
-        final HashSet<SourceSection> nonCovered = new HashSet<>();
-        nonCovered.addAll(loaded);
-        nonCovered.removeAll(covered);
-        return nonCovered;
-    }
-
-    Set<Integer> nonCoveredLineNumbers() {
-        Set<Integer> linesNotCovered = new HashSet<>();
-        for (SourceSection ss : nonCoveredSections()) {
-            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
-                linesNotCovered.add(i);
-            }
-        }
-        return linesNotCovered;
-    }
-
-    Set<Integer> loadedLineNumbers() {
-        Set<Integer> loadedLines = new HashSet<>();
-        for (SourceSection ss : loaded) {
-            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
-                loadedLines.add(i);
-            }
-        }
-        return loadedLines;
+    /**
+     * @param ec context of the event, used in our case to lookup the
+     * {@link SourceSection} that our node is instrumenting.
+     * @return An {@link ExecutionEventNode}
+     */
+    @Override
+    public ExecutionEventNode create(final EventContext ec) {
+        return new CoverageNode(instrument, ec.getInstrumentedSourceSection());
     }
 }

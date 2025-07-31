@@ -38,38 +38,55 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.hpi.swa.lox.coverage;
+package de.hpi.swa.coverage;
 
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A listener for new {@link SourceSection}s being loaded.
- *
- * Because we null {@link CoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
- * attached} an instance of this listener, each time a new {@link SourceSection}
- * of interest is loaded, we are notified in the
- * {@link #onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent) }
- * method.
+ * Contains per {@link com.oracle.truffle.api.source.Source} coverage by keeping
+ * track of loaded and covered
+ * {@link com.oracle.truffle.api.source.SourceSection}s.
  */
-final class GatherSourceSectionsListener implements LoadSourceSectionListener {
+public final class Coverage {
 
-    private final CoverageInstrument instrument;
+    private final Set<SourceSection> loaded = new HashSet<>();
+    private final Set<SourceSection> covered = new HashSet<>();
 
-    GatherSourceSectionsListener(CoverageInstrument instrument) {
-        this.instrument = instrument;
+    void addCovered(SourceSection sourceSection) {
+        covered.add(sourceSection);
     }
 
-    /**
-     * Notification that a new {@link LoadSourceSectionEvent} has occurred.
-     *
-     * @param event information about the event. We use this information to keep
-     * our {@link CoverageInstrument#coverageMap} up to date.
-     */
-    @Override
-    public void onLoad(LoadSourceSectionEvent event) {
-        final SourceSection sourceSection = event.getSourceSection();
-        instrument.addLoaded(sourceSection);
+    void addLoaded(SourceSection sourceSection) {
+        loaded.add(sourceSection);
+    }
+
+    private Set<SourceSection> nonCoveredSections() {
+        final HashSet<SourceSection> nonCovered = new HashSet<>();
+        nonCovered.addAll(loaded);
+        nonCovered.removeAll(covered);
+        return nonCovered;
+    }
+
+    Set<Integer> nonCoveredLineNumbers() {
+        Set<Integer> linesNotCovered = new HashSet<>();
+        for (SourceSection ss : nonCoveredSections()) {
+            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
+                linesNotCovered.add(i);
+            }
+        }
+        return linesNotCovered;
+    }
+
+    Set<Integer> loadedLineNumbers() {
+        Set<Integer> loadedLines = new HashSet<>();
+        for (SourceSection ss : loaded) {
+            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
+                loadedLines.add(i);
+            }
+        }
+        return loadedLines;
     }
 }

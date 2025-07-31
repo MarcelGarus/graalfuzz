@@ -1,4 +1,4 @@
-package de.hpi.swa.lox.cli;
+package de.hpi.swa.cli;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,7 +14,7 @@ import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 
-import de.hpi.swa.lox.coverage.CoverageInstrument;
+import de.hpi.swa.coverage.CoverageInstrument;
 
 public class LoxMain extends AbstractLanguageLauncher {
 

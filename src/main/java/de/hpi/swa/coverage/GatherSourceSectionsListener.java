@@ -38,35 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package de.hpi.swa.lox.coverage;
+package de.hpi.swa.coverage;
 
-import com.oracle.truffle.api.instrumentation.EventContext;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
-import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
+import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
- * A factory for nodes that track coverage
+ * A listener for new {@link SourceSection}s being loaded.
  *
  * Because we null {@link CoverageInstrument#enable(com.oracle.truffle.api.instrumentation.TruffleInstrument.Env)
- * attached} an instance of this factory, each time a AST node of interest is
- * created, it is instrumented with a node created by this factory.
+ * attached} an instance of this listener, each time a new {@link SourceSection}
+ * of interest is loaded, we are notified in the
+ * {@link #onLoad(com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent) }
+ * method.
  */
-final class CoverageEventFactory implements ExecutionEventNodeFactory {
+final class GatherSourceSectionsListener implements LoadSourceSectionListener {
 
-    private CoverageInstrument instrument;
+    private final CoverageInstrument instrument;
 
-    CoverageEventFactory(CoverageInstrument instrument) {
+    GatherSourceSectionsListener(CoverageInstrument instrument) {
         this.instrument = instrument;
     }
 
     /**
-     * @param ec context of the event, used in our case to lookup the
-     * {@link SourceSection} that our node is instrumenting.
-     * @return An {@link ExecutionEventNode}
+     * Notification that a new {@link LoadSourceSectionEvent} has occurred.
+     *
+     * @param event information about the event. We use this information to keep
+     * our {@link CoverageInstrument#coverageMap} up to date.
      */
     @Override
-    public ExecutionEventNode create(final EventContext ec) {
-        return new CoverageNode(instrument, ec.getInstrumentedSourceSection());
+    public void onLoad(LoadSourceSectionEvent event) {
+        final SourceSection sourceSection = event.getSourceSection();
+        instrument.addLoaded(sourceSection);
     }
 }
