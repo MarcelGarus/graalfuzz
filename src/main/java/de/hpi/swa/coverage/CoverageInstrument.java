@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -89,7 +88,6 @@ public final class CoverageInstrument extends TruffleInstrument {
 
     private void printResult(PrintStream printStream, Source source) {
         String path = source.getPath();
-        int lineCount = source.getLineCount();
 
         Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(source);
         Set<Integer> loadedLineNumbers = coverageMap.get(source).loadedLineNumbers();
@@ -125,12 +123,7 @@ public final class CoverageInstrument extends TruffleInstrument {
     }
 
     synchronized void addLoaded(SourceSection sourceSection) {
-        final Coverage coverage = coverageMap.computeIfAbsent(sourceSection.getSource(), new Function<Source, Coverage>() {
-            @Override
-            public Coverage apply(Source s) {
-                return new Coverage();
-            }
-        });
+        final Coverage coverage = coverageMap.computeIfAbsent(sourceSection.getSource(), (Source s) -> new Coverage());
         coverage.loaded.add(sourceSection);
     }
 

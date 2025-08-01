@@ -45,9 +45,10 @@ public class LoxArray {
     }
 
     @TruffleBoundary
+    @Override
     public String toString() {
         var s = "";
-        for(int i = 0; i < size; i++) {
+        for (int i = 0; i < size; i++) {
             if (elements[i] != null) {
                 if (elements[i] instanceof TruffleString) {
                     s += "\"" + elements[i].toString() + "\"";
@@ -62,6 +63,6 @@ public class LoxArray {
             }
         }
         return "[" + s + "]";
-    }   
+    }
 
 }
