@@ -10,7 +10,11 @@ import com.oracle.truffle.api.TruffleLanguage;
 
 import de.hpi.swa.lox.runtime.LoxContext;
 
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+
 @TruffleLanguage.Registration(id = LoxLanguage.ID)
+@ProvidedTags({StandardTags.StatementTag.class, StandardTags.ExpressionTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class})
 public class LoxLanguage extends TruffleLanguage<LoxContext> {
 
     public static final String ID = "lox";

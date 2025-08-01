@@ -44,9 +44,6 @@ public final class CoverageInstrument extends TruffleInstrument {
     @Option(name = "", help = "Enable  Coverage (default: false).", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "PrintCoverage", help = "Print coverage to stdout on process exit (default: true).", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<Boolean> PRINT_COVERAGE = new OptionKey<>(true);
-
     public static final String ID = "code-coverage";
 
     final Map<Source, Coverage> coverageMap = new HashMap<>();
@@ -74,9 +71,7 @@ public final class CoverageInstrument extends TruffleInstrument {
 
     @Override
     protected void onFinalize(Env env) {
-        if (PRINT_COVERAGE.getValue(env.getOptions())) {
-            printResults(env);
-        }
+        printResults(env);
     }
 
     private synchronized void printResults(final Env env) {

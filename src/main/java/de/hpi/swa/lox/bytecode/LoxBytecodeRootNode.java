@@ -17,6 +17,10 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import static com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import static com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
+import static com.oracle.truffle.api.instrumentation.StandardTags.RootTag;
+import static com.oracle.truffle.api.instrumentation.StandardTags.RootBodyTag;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -25,20 +29,20 @@ import de.hpi.swa.lox.nodes.LoxRootNode;
 import de.hpi.swa.lox.nodes.operations.BinaryOperations.AddNode;
 import de.hpi.swa.lox.nodes.operations.BinaryOperations.MultiplyNode;
 import de.hpi.swa.lox.nodes.operations.BinaryOperations.SubtractNode;
+import de.hpi.swa.lox.parser.LoxRuntimeError;
 import de.hpi.swa.lox.runtime.LoxContext;
 import de.hpi.swa.lox.runtime.objects.GlobalObject;
 import de.hpi.swa.lox.runtime.objects.LoxArray;
 import de.hpi.swa.lox.runtime.objects.Nil;
-import de.hpi.swa.lox.parser.LoxRuntimeError;
-
 
 @GenerateBytecode(//
         languageClass = LoxLanguage.class, //
-        boxingEliminationTypes = { long.class, boolean.class }, //
+        boxingEliminationTypes = {long.class, boolean.class}, //
         enableUncachedInterpreter = true, //
         // defaultLocalValue = Nil.INSTANCE, // does not work?
         enableBlockScoping = true, // should be enabled by default
-        enableSerialization = true)
+        enableSerialization = true,
+        enableTagInstrumentation = true)
 public abstract class LoxBytecodeRootNode extends LoxRootNode implements BytecodeRootNode {
 
     protected LoxBytecodeRootNode(LoxLanguage language, FrameDescriptor frameDescriptor) {
@@ -57,14 +61,18 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
     }
 
     static private boolean isTruthy(Object object) {
-        if (object == Nil.INSTANCE) return false;
-        if (object instanceof Boolean) return (boolean)object;
+        if (object == Nil.INSTANCE) {
+            return false;
+        }
+        if (object instanceof Boolean) {
+            return (boolean) object;
+        }
         return true;
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxIsTruthy {
-        
+
         @Specialization
         static boolean bool(boolean value) {
             return value == true;
@@ -76,10 +84,10 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-
     // Print Statement
-    @Operation
+    @Operation(tags = StatementTag.class)
     public static final class LoxPrint {
+
         @TruffleBoundary
         @Specialization
         static void doDefault(Object value, @Bind LoxContext context) {
@@ -95,8 +103,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = StatementTag.class)
     public static final class LoxHalt {
+
         @TruffleBoundary
         @Specialization
         static void doDefault(@Bind LoxContext context) {
@@ -104,8 +113,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxOr {
+
         @Specialization
         static boolean doBoolean(boolean left, boolean right) {
             return left || right;
@@ -117,8 +127,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxAnd {
+
         @Specialization
         static boolean doBoolean(boolean left, boolean right) {
             return left && right;
@@ -130,37 +141,40 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxAdd {
+
         @Specialization
         static Object doOp(Object left, Object right,
-            @Bind Node node,
-            @Cached AddNode addNode) {
+                @Bind Node node,
+                @Cached AddNode addNode) {
             return addNode.execute(left, right);
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxSub {
+
         @Specialization
         static Object doOp(Object left, Object right,
-            @Bind Node node,
-            @Cached SubtractNode subtractNode) {       
+                @Bind Node node,
+                @Cached SubtractNode subtractNode) {
             return subtractNode.execute(left, right);
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxMul {
+
         @Specialization
         static Object doOp(Object left, Object right,
-            @Bind Node node,
-            @Cached MultiplyNode multiplyNode) {       
+                @Bind Node node,
+                @Cached MultiplyNode multiplyNode) {
             return multiplyNode.execute(left, right);
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxDiv {
 
         @Specialization
@@ -218,8 +232,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
     }
 
     // Equality
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxLess {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left < right;
@@ -252,8 +267,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxLessEqual {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left <= right;
@@ -286,8 +302,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxGreater {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left > right;
@@ -320,8 +337,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxGreaterEqual {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left >= right;
@@ -354,8 +372,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxEqual {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left == right;
@@ -397,13 +416,14 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         @Fallback
         static Object fallback(Object left, Object right, @Bind Node node) {
             return left == right; // equality is special... one should be able to ask any question and get false...
-            
+
             // throw typeError(node, "==", left, right);
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxNotEqual {
+
         @Specialization
         static boolean doLong(long left, long right) {
             return left != right;
@@ -430,8 +450,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxUnaryMinus {
+
         @Specialization
         static long doLong(long value) {
             return -value;
@@ -449,8 +470,9 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
 
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxNegate {
+
         @Specialization
         static boolean doBoolean(boolean value) {
             return !value;
@@ -470,9 +492,10 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         return globalObject.get(name);
     }
 
-    @Operation
+    @Operation(tags = StatementTag.class)
     @ConstantOperand(type = String.class)
     public static final class LoxDefineGlobalVariable {
+
         @Specialization
         static void doDefault(String name,
                 @Bind LoxContext context,
@@ -497,9 +520,10 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = StatementTag.class)
     @ConstantOperand(type = String.class)
     public static final class LoxWriteGlobalVariable {
+
         @Specialization
         static void doDefault(String name, Object value,
                 @Bind LoxContext context,
@@ -510,9 +534,10 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     @ConstantOperand(type = String.class)
     public static final class LoxReadGlobalVariable {
+
         @Specialization
         static Object doDefault(String name,
                 @Bind LoxContext context,
@@ -531,19 +556,18 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxNewArray {
-        
+
         @Specialization
         static Object fallback() {
             return new LoxArray();
         }
     }
 
-    @Operation
+    @Operation(tags = ExpressionTag.class)
     public static final class LoxReadArray {
-        
-        
+
         @Specialization(guards = "index >= 0")
 
         static Object readArray(LoxArray array, long index) {
@@ -556,7 +580,7 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = StatementTag.class)
     public static final class LoxWriteArray {
 
         @Specialization(guards = "index >= 0")
@@ -571,9 +595,10 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
         }
     }
 
-    @Operation
+    @Operation(tags = StatementTag.class)
     @ConstantOperand(type = LocalAccessor.class)
     public static final class LoxCheckLocalDefined {
+
         @Specialization
         static void doDefault(VirtualFrame frame, LocalAccessor accessor,
                 @Bind BytecodeNode bytecodeNode,
@@ -596,20 +621,15 @@ public abstract class LoxBytecodeRootNode extends LoxRootNode implements Bytecod
     // static Object doVariable(VirtualFrame frame, String name, @Bind LoxContext
     // context, @Bind Node node) {
     // // return context.getVariable(name);
-
     // var slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot(name);
-
     // var value = frame.getAuxiliarySlot(slot);
     // if (value == null) {
     // return Nil.INSTANCE;
     // }
-
     // return value;
     // }
     // }
-
     // Helper
-
     @TruffleBoundary
     private static LoxRuntimeError typeError(Node node, String operation, Object... values) {
         StringBuilder result = new StringBuilder();
