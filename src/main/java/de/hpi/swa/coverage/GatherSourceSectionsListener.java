@@ -4,6 +4,7 @@ import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
 import com.oracle.truffle.api.source.SourceSection;
 
+// Gets notified if new sources are loaded.
 final class GatherSourceSectionsListener implements LoadSourceSectionListener {
 
     private final CoverageInstrument instrument;

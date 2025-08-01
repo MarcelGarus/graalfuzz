@@ -16,10 +16,8 @@ import org.graalvm.options.OptionValues;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
-import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -69,7 +67,7 @@ public final class CoverageInstrument extends TruffleInstrument {
 
     private void enable(final Env env) {
         System.out.println("Enabling instrument");
-        SourceSectionFilter filter = SourceSectionFilter.newBuilder().tagIs(ExpressionTag.class).includeInternal(false).build();
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(true).build();
         Instrumenter instrumenter = env.getInstrumenter();
         instrumenter.attachLoadSourceSectionListener(filter, new GatherSourceSectionsListener(this), true);
         instrumenter.attachExecutionEventFactory(filter, new CoverageEventFactory(this));

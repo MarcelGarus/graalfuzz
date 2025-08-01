@@ -1,168 +1,65 @@
 package de.hpi.swa.cli;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
-import org.graalvm.launcher.AbstractLanguageLauncher;
-import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Context.Builder;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
 
+import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
 
-public class LoxMain extends AbstractLanguageLauncher {
+public class LoxMain {
 
     public static void main(String[] args) {
-        System.out.println("Hello, LoxMain!");
+        System.out.println("Hello, FuzzMain!");
 
-        new LoxMain().launch(args);
-    }
-
-    private String command;
-    private File file;
-    private int iterations;
-
-    @Override
-    protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
-        List<String> unrecognized = new ArrayList<>();
-        for (int i = 0; i < arguments.size(); i++) {
-            var arg = arguments.get(i);
-            if (arg.startsWith("-")) {
-                switch (arg) {
-                    case "-c":
-                        if (i != arguments.size() - 2) {
-                            System.err.println("-c must be the last argument followed by a lox expression");
-                            System.exit(1);
-                        } else {
-                            command = arguments.get(i + 1);
-                            i++;
-                        }
-                        break;
-                    case "-b":
-                        if (i >= arguments.size() - 1) {
-                            System.err.println("-b must be followed by a number of iterations");
-                            System.exit(1);
-                        } else {
-                            iterations = Integer.parseInt(arguments.get(i + 1));
-                            i++;
-                        }
-                        break;
-                    default:
-                        unrecognized.add(arg);
-                }
-            } else if (i != arguments.size() - 1) {
-                System.err.println("filename must be the last argument");
-                System.exit(1);
+        // var file = Path.of(args[0]).toFile();
+        // if (!file.isFile()) {
+        //     System.err.println("Cannot access file " + arg);
+        //     System.exit(1);
+        // }
+        String loxProgram = """
+            // Simple Lox program for testing coverage
+            var a = 10;
+            if (a > 5) {
+                print "a is greater than 5";
             } else {
-                file = Path.of(arg).toFile();
-                if (!file.isFile()) {
-                    System.err.println("Cannot access file " + arg);
-                    System.exit(1);
-                }
+                print "a is not greater than 5";
             }
-        }
-        return unrecognized;
+            for (var i = 0; i < 2; i = i + 1) {
+                print i;
+            }
+            """;
+
+        System.out.println("Running Lox program:\n" + loxProgram);
+
+        var coverage = runToFindCoverage(loxProgram);
+        // coverage.printSummary();
+        System.out.println("Coverage: " + coverage);
     }
 
-    @Override
-    protected void launch(Builder contextBuilder) {
-        System.out.println("Launch called. Adding Instrument");
-        contextBuilder.option(CoverageInstrument.ID, "true");
+    public static Map<com.oracle.truffle.api.source.Source, Coverage> runToFindCoverage(String loxCode) {
+        try (Engine engine = Engine.newBuilder().option(CoverageInstrument.ID, "true").build(); Context context = Context.newBuilder("lox").engine(engine).allowAllAccess(true).build()) {
+            CoverageInstrument coverageInstrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
 
-        Source source = null;
-        try (var context = contextBuilder.build()) {
-            if (iterations > 0) {
-                if (file == null && command == null) {
-                    System.err.println("-b cannot be used for the REPL");
-                    System.exit(1);
-                }
-                if (file != null) {
-                    try {
-                        source = Source.newBuilder("lox", file).build();
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        System.exit(1);
-                    }
-                } else {
-                    source = Source.newBuilder("lox", command, "<command>").buildLiteral();
-                }
-                long totalTime = 0;
-                for (int i = 0; i < iterations; i++) {
-                    long t0 = System.nanoTime();
-                    try {
-                        context.eval(source);
-                    } catch (Exception e) {
-                        printException(e);
-                        System.exit(1);
-                    }
-                    long t1 = System.nanoTime();
-                    long iterationTime = t1 - t0;
-                    totalTime += iterationTime;
-                    // System.err.println("Iteration " + (i + 1) + ": " + (iterationTime / 1_000_000) + "ms");
-                }
-                long averageTime = totalTime / iterations;
-                System.err.println("Average time: " + (averageTime / 1_000_000) + "ms");
-            } else {
-                if (file != null) {
-                    try {
-                        source = Source.newBuilder("lox", file).build();
-                        try {
-                            context.eval(source);
-                        } catch (Exception e) {
-                            printException(e);
-                        }
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                } else if (command != null) {
-                    try {
-                        context.eval("lox", command);
-                    } catch (Exception e) {
-                        printException(e);
-                    }
-                } else {
-                    startEvalLoop(context);
-                }
+            if (coverageInstrument == null) {
+                throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
             }
-        }
-    }
 
-    private void startEvalLoop(Context context) {
-        while (true) {
-            System.out.print("> ");
-            String line = System.console().readLine();
-            if (line == null) {
-                break;
-            }
-            evaluateExpression(context, line);
-        }
-    }
+            var source = org.graalvm.polyglot.Source.newBuilder("lox", loxCode, "<string-input>").buildLiteral();
 
-    public void evaluateExpression(Context context, String line) {
-        try {
-            var result = context.eval("lox", line);
-            if (!result.isNull()) {
-                System.out.println(result);
+            try {
+                context.eval(source);
+            } catch (PolyglotException e) {
+                System.err.println("Error during Lox execution:");
+                LoxMain.printException(e);
             }
+
+            return coverageInstrument.getCoverageMap();
         } catch (Exception e) {
-            printException(e);
+            throw new RuntimeException("An unexpected error occurred: " + e.getMessage(), e);
         }
-    }
-
-    @Override
-    protected String getLanguageId() {
-        return "lox";
-    }
-
-    @Override
-    protected void printHelp(OptionCategory maxCategory) {
-        System.out.println("Usage: lox [option] ... (@filename | command)");
     }
 
     public static void printException(Exception e) {
