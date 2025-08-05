@@ -9,10 +9,12 @@ import org.graalvm.polyglot.PolyglotException;
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
 
-public class LoxMain {
+public class FuzzMain {
 
     public static void main(String[] args) {
         System.out.println("Hello, FuzzMain!");
+
+        var polyglot = Context.newBuilder().build();
 
         // var file = Path.of(args[0]).toFile();
         // if (!file.isFile()) {
@@ -37,6 +39,10 @@ public class LoxMain {
         var coverage = runToFindCoverage(loxProgram);
         // coverage.printSummary();
         System.out.println("Coverage: " + coverage);
+
+        // var source = org.graalvm.polyglot.Source.newBuilder("js", "2 + 3", "<string-input>").buildLiteral();
+        // var value = polyglot.eval(source);
+        // System.out.println(value);
     }
 
     public static Map<com.oracle.truffle.api.source.Source, Coverage> runToFindCoverage(String loxCode) {
@@ -50,10 +56,11 @@ public class LoxMain {
             var source = org.graalvm.polyglot.Source.newBuilder("lox", loxCode, "<string-input>").buildLiteral();
 
             try {
-                context.eval(source);
+                var value = context.eval(source);
+                System.err.println("Returned: " + value);
             } catch (PolyglotException e) {
                 System.err.println("Error during Lox execution:");
-                LoxMain.printException(e);
+                FuzzMain.printException(e);
             }
 
             return coverageInstrument.getCoverageMap();
