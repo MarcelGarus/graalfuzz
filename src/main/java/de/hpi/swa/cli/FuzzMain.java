@@ -1,11 +1,13 @@
 package de.hpi.swa.cli;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
-import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
 import de.hpi.swa.generator.Generator;
 
@@ -23,9 +25,9 @@ public class FuzzMain {
 
         var engine = Engine.newBuilder().option(CoverageInstrument.ID, "true").build();
         var context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
-        var coverageInstrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
+        var instrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
 
-        if (coverageInstrument == null) {
+        if (instrument == null) {
             throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
         }
 
@@ -46,29 +48,15 @@ public class FuzzMain {
                 print i;
             }
             """;
-        String jsProgram = """
-            function sum(list) {
-                var sum = 0;
-                for (item of list) {
-                    sum += item;
-                }
-                return sum;
-            }
-
-            function greet(amazingness) {
-                if (amazingness > 10) {
-                    console.log("Hello, very amazing world! " + amazingness);
-                } else {
-                    console.log("Hello, world!" + amazingness);
-                }
-            }
-
-            var amazingness = sum([1, 2, 3]);
-            greet(amazingness);
-            greet
-            """;
-
-        var source = org.graalvm.polyglot.Source.newBuilder("js", jsProgram, "<string-input>").buildLiteral();
+        org.graalvm.polyglot.Source source;
+        try {
+            File jsFile = new File("examples/program.js");
+            source = org.graalvm.polyglot.Source.newBuilder("js", jsFile).build();
+        } catch (IOException e) {
+            System.err.println("Could not read file.");
+            e.printStackTrace();
+            return;
+        }
 
         System.out.println("Running program.\n");
 
@@ -84,61 +72,24 @@ public class FuzzMain {
         System.err.println("The program returned this:");
         System.out.println(function);
 
-        for (var entry : coverageInstrument.getCoverageMap().entrySet()) {
-            // entry.getValue().printResult(entry.getKey());
-            var src = entry.getKey();
-            var cover = entry.getValue();
-            cover.printResult(src);
-            // System.out.println("Coverage of " + src.getPath() + " is " + Coverage.lineNumbers(cover.covered).size() + " / " + Coverage.lineNumbers(cover.loaded).size());
-        }
         if (function.isNull()) {
             System.out.println("Returning because the code didn't evaluate to a function.");
             return;
         }
 
-        // function.execute(Value.asValue(42));
-        // var coverage = coverageInstrument.getCoverageMap();
-        // System.out.println("Coverage: " + coverage);
-        // coverage.printSummary();
-        // var source = org.graalvm.polyglot.Source.newBuilder("js", jsProgram, "<string-input>").buildLiteral();
-        // var function = polyglot.eval(source);
-        // System.out.println(function);
-        // System.out.println(function.isMetaObject());
-        // function.execute(Value.asValue(42));
         var generator = new Generator();
         for (int i = 0; i < 10; i++) {
-            function.execute(generator.generateValue());
-            // coverageInstrument.getCoverageMap();
-            var coverage = coverageInstrument.getCoverageMap();
-            // System.out.println("Coverage: " + coverage);
-            for (var entry : coverageInstrument.getCoverageMap().entrySet()) {
-                // entry.getValue().printResult(entry.getKey());
-                var src = entry.getKey();
-                var cover = entry.getValue();
-                System.out.println("Coverage of " + src.getPath() + " is " + Coverage.lineNumbers(cover.covered).size() + " / " + Coverage.lineNumbers(cover.loaded).size());
+            instrument.coverage.clear();
+            var input = generator.generateValue();
+            System.out.print("Input: " + input);
+            for (var j = input.toString().length(); j < 22; j++) {
+                System.out.print(" ");
             }
+            function.execute(input);
+            instrument.coverage.printSummary();
         }
     }
 
-    // public static Map<com.oracle.truffle.api.source.Source, Coverage> runToFindCoverage(String loxCode) {
-    //     try (Engine engine = Engine.newBuilder().option(CoverageInstrument.ID, "true").build(); Context context = Context.newBuilder("lox").engine(engine).allowAllAccess(true).build()) {
-    //         CoverageInstrument coverageInstrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
-    //         if (coverageInstrument == null) {
-    //             throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
-    //         }
-    //         var source = org.graalvm.polyglot.Source.newBuilder("lox", loxCode, "<string-input>").buildLiteral();
-    //         try {
-    //             var value = context.eval(source);
-    //             System.err.println("Returned: " + value);
-    //         } catch (PolyglotException e) {
-    //             System.err.println("Error during Lox execution:");
-    //             FuzzMain.printException(e);
-    //         }
-    //         return coverageInstrument.getCoverageMap();
-    //     } catch (Exception e) {
-    //         throw new RuntimeException("An unexpected error occurred: " + e.getMessage(), e);
-    //     }
-    // }
     public static void printException(Exception e) {
         if (e instanceof PolyglotException error) {
             runtimeError(error);

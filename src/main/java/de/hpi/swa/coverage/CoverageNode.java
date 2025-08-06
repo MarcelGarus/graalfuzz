@@ -29,19 +29,28 @@ final class CoverageNode extends ExecutionEventNode {
     @CompilerDirectives.CompilationFinal
     private boolean covered;
 
-    private final SourceSection instrumentedSourceSection;
+    private final SourceSection section;
 
-    CoverageNode(CoverageInstrument instrument, SourceSection instrumentedSourceSection) {
+    CoverageNode(CoverageInstrument instrument, SourceSection section) {
         this.instrument = instrument;
-        this.instrumentedSourceSection = instrumentedSourceSection;
+        this.section = section;
     }
 
     @Override
-    public void onReturnValue(VirtualFrame vFrame, Object result) {
-        if (!covered) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            covered = true;
-            instrument.addCovered(instrumentedSourceSection);
-        }
+    public void onEnter(VirtualFrame frame) {
+        // if (!covered) {
+        instrument.coverage.addCovered(section);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        // covered = true;
+        // }
     }
+
+    // @Override
+    // public void onReturnValue(VirtualFrame vFrame, Object result) {
+    //     if (!covered) {
+    //         CompilerDirectives.transferToInterpreterAndInvalidate();
+    //         covered = true;
+    //         instrument.coverage.addCovered(section);
+    //     }
+    // }
 }

@@ -1,6 +1,8 @@
 package de.hpi.swa.coverage;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.source.Source;
@@ -8,48 +10,88 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class Coverage {
 
-    public final Set<SourceSection> loaded = new HashSet<>();
-    public final Set<SourceSection> covered = new HashSet<>();
+    private final Set<SourceSection> loaded = new HashSet();
+    private final Set<SourceSection> covered = new HashSet();
 
-    public Set<SourceSection> nonCoveredSections() {
+    public void addLoaded(SourceSection section) {
+        loaded.add(section);
+    }
+
+    public void addCovered(SourceSection section) {
+        covered.add(section);
+    }
+
+    public Set<SourceSection> getLoaded() {
+        return loaded;
+    }
+
+    public Set<SourceSection> getCovered() {
+        return covered;
+    }
+
+    public Set<SourceSection> getNonCovered() {
         final HashSet<SourceSection> nonCovered = new HashSet<>();
         nonCovered.addAll(loaded);
         nonCovered.removeAll(covered);
         return nonCovered;
     }
 
-    public static Set<Integer> lineNumbers(Set<SourceSection> sections) {
-        Set<Integer> lines = new HashSet<>();
-        for (SourceSection ss : sections) {
-            for (int i = ss.getStartLine(); i <= ss.getEndLine(); i++) {
+    public void clear() {
+        covered.clear();
+    }
+
+    public void printSummary() {
+        // System.out.print("Covered " + covered.size() + " / " + loaded.size() + " expressions: ");
+        System.out.print("Coverage: ");
+        for (var section : loaded) {
+            var c = covered.contains(section) ? 'X' : '_';
+            System.out.print(c);
+        }
+        System.out.println();
+    }
+
+    public void printFull() {
+        printSummary();
+
+        var allSources = new HashSet<Source>();
+        for (var section : loaded) {
+            allSources.add(section.getSource());
+        }
+        for (var section : covered) {
+            allSources.add(section.getSource());
+        }
+
+        var loadedLines = linesByFile(loaded);
+        var coveredLines = linesByFile(covered);
+
+        for (var source : allSources) {
+            var path = source.getPath();
+            if (path == null) {
+                continue;
+            }
+            System.out.println(path);
+            var loadedLinesOfSource = loadedLines.getOrDefault(source, new HashSet());
+            var coveredLinesOfSource = coveredLines.getOrDefault(source, new HashSet());
+            for (int i = 1; i <= source.getLineCount(); i++) {
+                var c = ' ';
+                if (loadedLinesOfSource.contains(i)) {
+                    c = coveredLinesOfSource.contains(i) ? '+' : '-';
+                }
+                System.out.println(String.format("%s %s", c, source.getCharacters(i)));
+            }
+        }
+    }
+
+    public static Map<Source, Set<Integer>> linesByFile(Set<SourceSection> sections) {
+        var out = new HashMap<Source, Set<Integer>>();
+        for (var section : sections) {
+            var source = section.getSource();
+            out.putIfAbsent(source, new HashSet());
+            var lines = out.get(source);
+            for (int i = section.getStartLine(); i <= section.getEndLine(); i++) {
                 lines.add(i);
             }
         }
-        return lines;
-    }
-
-    public void printResult(Source source) {
-        var path = source.getPath();
-        var nonCoveredLineNumbers = lineNumbers(nonCoveredSections());
-        var loadedLineNumbers = lineNumbers(loaded);
-        var coveredPercentage = 100 * ((double) loadedLineNumbers.size() - nonCoveredLineNumbers.size()) / ((double) loadedLineNumbers.size());
-        // System.out.println("==");
-        // System.out.println("Coverage of " + path + " is " + lineNumbers(covered).size() + " / " + loadedLineNumbers.size());
-        System.out.println("Coverage of " + path + " is " + String.format("%.2f%%", coveredPercentage));
-        // System.out.println("loaded: " + loadedLineNumbers.size());
-        // System.out.println("non-covered: " + nonCoveredLineNumbers.size());
-        // System.out.println("covered: " + coveredLineNumbers.size());
-        for (int i = 1; i <= source.getLineCount(); i++) {
-            var c = getCoverageCharacter(nonCoveredLineNumbers, loadedLineNumbers, i);
-            System.out.println(String.format("%s %s", c, source.getCharacters(i)));
-        }
-    }
-
-    private static char getCoverageCharacter(Set<Integer> nonCoveredLineNumbers, Set<Integer> loadedLineNumbers, int i) {
-        if (loadedLineNumbers.contains(i)) {
-            return nonCoveredLineNumbers.contains(i) ? '-' : '+';
-        } else {
-            return ' ';
-        }
+        return out;
     }
 }
