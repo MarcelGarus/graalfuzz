@@ -62,7 +62,6 @@ public final class CoverageInstrument extends TruffleInstrument {
     }
 
     private void enable(final Env env) {
-        System.out.println("Enabling instrument");
         SourceSectionFilter filter = SourceSectionFilter.newBuilder().includeInternal(true).build();
         Instrumenter instrumenter = env.getInstrumenter();
         instrumenter.attachLoadSourceSectionListener(filter, new GatherSourceSectionsListener(this), true);
@@ -71,7 +70,7 @@ public final class CoverageInstrument extends TruffleInstrument {
 
     @Override
     protected void onFinalize(Env env) {
-        printResults(env);
+        // printResults(env);
     }
 
     private synchronized void printResults(final Env env) {
@@ -81,11 +80,11 @@ public final class CoverageInstrument extends TruffleInstrument {
         }
     }
 
-    private void printResult(PrintStream printStream, Source source) {
+    public void printResult(PrintStream printStream, Source source) {
         String path = source.getPath();
 
         Set<Integer> nonCoveredLineNumbers = nonCoveredLineNumbers(source);
-        Set<Integer> loadedLineNumbers = coverageMap.get(source).loadedLineNumbers();
+        Set<Integer> loadedLineNumbers = Coverage.lineNumbers(coverageMap.get(source).loaded);
         // int numNonCovered = nonCoveredLineNumbers.
         // Set<Integer> coveredLineNumbers = Set loadedLineNumbers. .difference(nonCoveredLineNumbers);
         double coveredPercentage = 100 * ((double) loadedLineNumbers.size() - nonCoveredLineNumbers.size()) / ((double) loadedLineNumbers.size());
@@ -109,7 +108,7 @@ public final class CoverageInstrument extends TruffleInstrument {
     }
 
     public synchronized Set<Integer> nonCoveredLineNumbers(final Source source) {
-        return coverageMap.get(source).nonCoveredLineNumbers();
+        return Coverage.lineNumbers(coverageMap.get(source).nonCoveredSections());
     }
 
     @Override
@@ -118,11 +117,17 @@ public final class CoverageInstrument extends TruffleInstrument {
     }
 
     synchronized void addLoaded(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return;
+        }
         final Coverage coverage = coverageMap.computeIfAbsent(sourceSection.getSource(), (Source s) -> new Coverage());
         coverage.loaded.add(sourceSection);
     }
 
     synchronized void addCovered(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return;
+        }
         final Coverage coverage = coverageMap.get(sourceSection.getSource());
         coverage.covered.add(sourceSection);
     }

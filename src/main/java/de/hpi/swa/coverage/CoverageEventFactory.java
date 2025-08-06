@@ -11,13 +11,11 @@ final class CoverageEventFactory implements ExecutionEventNodeFactory {
     private final CoverageInstrument instrument;
 
     CoverageEventFactory(CoverageInstrument instrument) {
-        System.out.println("factory created.");
         this.instrument = instrument;
     }
 
     @Override
     public ExecutionEventNode create(final EventContext ec) {
-        System.out.println("creating coverage tracking node.");
         return new CoverageNode(instrument, ec.getInstrumentedSourceSection());
     }
 }
