@@ -88,8 +88,12 @@ public class FuzzMain {
             for (var j = input.toString().length(); j < 22; j++) {
                 System.out.print(" ");
             }
-            function.execute(input);
-            instrument.coverage.printSummary();
+            try {
+                function.execute(input);
+                instrument.coverage.printSummary();
+            } catch (PolyglotException e) {
+                System.out.println("crashed: " + e.getMessage());
+            }
         }
     }
 
