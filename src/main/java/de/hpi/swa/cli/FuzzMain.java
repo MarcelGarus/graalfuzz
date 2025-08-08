@@ -2,6 +2,7 @@ package de.hpi.swa.cli;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Random;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -9,6 +10,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import de.hpi.swa.coverage.CoverageInstrument;
+import de.hpi.swa.generator.Complexity;
 import de.hpi.swa.generator.Generator;
 
 // Notes:
@@ -50,8 +52,8 @@ public class FuzzMain {
             """;
         org.graalvm.polyglot.Source source;
         try {
-            File jsFile = new File("examples/program.js");
-            source = org.graalvm.polyglot.Source.newBuilder("js", jsFile).build();
+            File pyFile = new File("examples/program.py");
+            source = org.graalvm.polyglot.Source.newBuilder("python", pyFile).build();
         } catch (IOException e) {
             System.err.println("Could not read file.");
             e.printStackTrace();
@@ -80,7 +82,8 @@ public class FuzzMain {
         var generator = new Generator();
         for (int i = 0; i < 10; i++) {
             instrument.coverage.clear();
-            var input = generator.generateValue();
+            var input = generator.generateValue(new Random(), new Complexity(10));
+
             System.out.print("Input: " + input);
             for (var j = input.toString().length(); j < 22; j++) {
                 System.out.print(" ");
