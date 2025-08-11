@@ -11,7 +11,8 @@ import org.graalvm.polyglot.Value;
 
 import de.hpi.swa.coverage.CoverageInstrument;
 import de.hpi.swa.generator.Complexity;
-import de.hpi.swa.generator.Generator;
+import de.hpi.swa.generator.DecisionTree;
+import de.hpi.swa.generator.Universe;
 
 // Notes:
 // - existierenden Code (z.B. Tests) fuzzen, um Wertebereich einzuschränken
@@ -79,21 +80,23 @@ public class FuzzMain {
             return;
         }
 
-        var generator = new Generator();
-        for (int i = 0; i < 10; i++) {
+        var tree = new DecisionTree();
+        for (int i = 0; i < 50; i++) {
             instrument.coverage.clear();
-            var input = generator.generateValue(new Random(), new Complexity(10));
+            var universe = new Universe(tree, new Random());
+            universe.run(function, new Complexity(10));
+            // tree.answer(input.toString());
 
-            System.out.println("\nRunning.");
-            try {
-                function.execute(input);
-                instrument.coverage.printSummary();
-            } catch (PolyglotException e) {
-                System.out.println("crashed: " + e.getMessage());
-                generator.crash(e.getMessage());
-            }
+            // System.out.println("\nRunning.");
+            // try {
+            //     function.execute(input);
+            //     instrument.coverage.printSummary();
+            // } catch (PolyglotException e) {
+            //     System.out.println("crashed: " + e.getMessage());
+            //     universe.tree.crash(e.getMessage());
+            // }
+            // instrument.coverage.printSummary();
         }
-        var tree = generator.getDecisionTree();
         System.out.println("Decision Tree:");
         System.out.println(tree);
     }
