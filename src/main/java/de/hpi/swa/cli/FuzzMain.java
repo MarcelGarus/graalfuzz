@@ -11,16 +11,10 @@ import org.graalvm.polyglot.Value;
 
 import de.hpi.swa.coverage.CoverageInstrument;
 import de.hpi.swa.generator.Complexity;
+import de.hpi.swa.generator.Entropy;
 import de.hpi.swa.generator.TraceTree;
 import de.hpi.swa.generator.Universe;
 
-// Notes:
-// - existierenden Code (z.B. Tests) fuzzen, um Wertebereich einzuschränken
-// - example mining definitiv sinnvoll als Future work
-// - test amplification
-// - anhand Benutzung von Objekten Klassen herausfinden
-//   -> Execution-Kontext automatisch rausfinden, Abhängigkeiten/Imports rausfinden
-//   -> mit Benni quatschen (z.B. "safe" JSON-Objekte von Flask)
 public class FuzzMain {
 
     public static void main(String[] args) {
@@ -34,27 +28,10 @@ public class FuzzMain {
             throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
         }
 
-        // var file = Path.of(args[0]).toFile();
-        // if (!file.isFile()) {
-        //     System.err.println("Cannot access file " + arg);
-        //     System.exit(1);
-        // }
-        String loxProgram = """
-            // Simple Lox program for testing coverage
-            var a = 10;
-            if (a > 5) {
-                print \"a is greater than 5\";
-            } else {
-                print \"a is not greater than 5\";
-            }
-            for (var i = 0; i < 2; i = i + 1) {
-                print i;
-            }
-            """;
         org.graalvm.polyglot.Source source;
         try {
-            File pyFile = new File("examples/program.py");
-            source = org.graalvm.polyglot.Source.newBuilder("python", pyFile).build();
+            File file = new File("examples/program.py");
+            source = org.graalvm.polyglot.Source.newBuilder("python", file).build();
         } catch (IOException e) {
             System.err.println("Could not read file.");
             e.printStackTrace();
@@ -82,22 +59,15 @@ public class FuzzMain {
 
         var tree = new TraceTree();
         for (int i = 0; i < 1000; i++) {
+            var entropy = new Entropy(new Random().nextLong());
             instrument.coverage.clear();
-            var universe = new Universe(tree, new Random());
+            var universe = new Universe(tree, entropy);
+            tree.visit();
             universe.run(function, new Complexity(10));
-            // tree.answer(input.toString());
-
-            // System.out.println("\nRunning.");
-            // try {
-            //     function.execute(input);
-            //     instrument.coverage.printSummary();
-            // } catch (PolyglotException e) {
-            //     System.out.println("crashed: " + e.getMessage());
-            //     universe.tree.crash(e.getMessage());
-            // }
-            // instrument.coverage.printSummary();
-            System.out.println(tree);
+            instrument.coverage.printSummary();
+            entropy.printSummary();
         }
+        System.out.println(tree);
     }
 
     public static void printException(Exception e) {
@@ -123,6 +93,5 @@ public class FuzzMain {
             System.err.println(error.getMessage());
             error.printStackTrace();
         }
-
     }
 }
