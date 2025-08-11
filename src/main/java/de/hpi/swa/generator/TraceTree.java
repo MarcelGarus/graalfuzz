@@ -33,46 +33,45 @@ public class TraceTree {
     }
 
     private final Event event;
-    private final boolean wasForced;
-    public int numVisits;
+    private int numVisits;
     private final List<TraceTree> children;
 
     public TraceTree() {
         this.event = new Event.Root();
-        this.wasForced = true;
         this.numVisits = 0;
         this.children = new ArrayList<>();
     }
 
     public TraceTree(Event event, boolean wasForced) {
         this.event = event;
-        this.wasForced = wasForced;
         this.numVisits = 1;
         this.children = new ArrayList<>();
     }
 
-    public void addChild(TraceTree child) {
-        children.add(child);
+    public void visit() {
+        numVisits++;
     }
 
-    public List<TraceTree> getChildren() {
-        return children;
-    }
-
-    public Event getContent() {
-        return event;
-    }
-
-    public TraceTree add(Event content, boolean wasForced) {
+    public TraceTree add(Event event) {
         for (TraceTree child : children) {
-            if (child.getContent().equals(content)) {
+            if (child.event.equals(event)) {
                 child.numVisits++;
                 return child;
             }
         }
-        TraceTree newChild = new TraceTree(content, wasForced);
-        this.addChild(newChild);
+        TraceTree newChild = new TraceTree(event, false);
+        children.add(newChild);
         return newChild;
+    }
+
+    public boolean isWorthExploring() {
+        if (children.size() == 1) {
+            var childEvent = children.get(0).event;
+            if (childEvent instanceof Event.Return || childEvent instanceof Event.Crash) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -119,6 +118,7 @@ public class TraceTree {
     public static final String ANSI_GREEN = "\u001B[32m";
     public static final String ANSI_BLUE = "\u001B[34m";
     public static final String ANSI_GREY = "\u001B[90m";
+    public static final int MAX_CHILDREN = 7;
 
     private void toStringHelper(StringBuilder sb, int indent) {
         sb.append(ANSI_GREY).append("| ".repeat(indent)).append(ANSI_RESET);
@@ -146,16 +146,16 @@ public class TraceTree {
         }
         sb.append(ANSI_GREY).append(" [").append(numVisits).append(" runs]").append(ANSI_RESET).append("\n");
         children.sort((a, b) -> b.qualityScore() - a.qualityScore());
-        if (children.size() <= 5) {
+        if (children.size() <= MAX_CHILDREN) {
             for (TraceTree child : children) {
                 child.toStringHelper(sb, indent + 1);
             }
         } else {
-            for (TraceTree child : children.subList(0, 5)) {
+            for (TraceTree child : children.subList(0, MAX_CHILDREN)) {
                 child.toStringHelper(sb, indent + 1);
             }
             sb.append(ANSI_GREY).append("| ".repeat(indent + 1)).append(ANSI_RESET);
-            var numVisitsRest = children.subList(5, children.size()).stream().mapToInt((child) -> child.numVisits).sum();
+            var numVisitsRest = children.subList(MAX_CHILDREN, children.size()).stream().mapToInt((child) -> child.numVisits).sum();
             sb.append("... ").append(ANSI_GREY).append("[").append(numVisitsRest).append(" runs]").append(ANSI_RESET).append("\n");
         }
     }

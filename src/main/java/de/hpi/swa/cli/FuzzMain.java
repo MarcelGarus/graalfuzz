@@ -81,7 +81,7 @@ public class FuzzMain {
         }
 
         var tree = new TraceTree();
-        for (int i = 0; i < 100; i++) {
+        for (int i = 0; i < 1000; i++) {
             instrument.coverage.clear();
             var universe = new Universe(tree, new Random());
             universe.run(function, new Complexity(10));

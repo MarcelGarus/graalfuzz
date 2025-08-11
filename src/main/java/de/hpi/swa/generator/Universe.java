@@ -22,7 +22,6 @@ public class Universe {
     public TraceTree tree;
     public final Random random;
     private int nextId = 0;
-    private boolean assumeDeterminism = true;
 
     public int reserveId() {
         var id = nextId;
@@ -31,21 +30,25 @@ public class Universe {
     }
 
     public void run(Value function, Complexity complexity) {
-        tree.numVisits++;
+        tree.visit();
 
         var input = generateValue(complexity);
         if (input instanceof QuantumObject quantumObject) {
             quantumObject.members.put("org.graalvm.python.embedding.KeywordArguments.is_keyword_arguments", false);
             quantumObject.members.put("org.graalvm.python.embedding.PositionalArguments.is_positional_arguments", false);
         }
-        tree = tree.add(new Event.Run(valueToString(input)), false);
-        try {
-            var returnValue = function.execute(Value.asValue(input));
-            System.out.println("Returned: " + returnValue);
-            tree.add(new Event.Return(returnValue.toString()), assumeDeterminism);
-        } catch (PolyglotException e) {
-            System.out.println("Crashed: " + e.getMessage());
-            tree.add(new Event.Crash(e.getMessage()), assumeDeterminism);
+        var future = tree.add(new Event.Run(valueToString(input)));
+        if (future.isWorthExploring()) {
+            future.visit();
+            tree = future;
+            try {
+                var returnValue = function.execute(Value.asValue(input));
+                System.out.println("Returned: " + returnValue);
+                tree.add(new Event.Return(returnValue.toString()));
+            } catch (PolyglotException e) {
+                System.out.println("Crashed: " + e.getMessage());
+                tree.add(new Event.Crash(e.getMessage()));
+            }
         }
     }
 
@@ -117,13 +120,27 @@ public class Universe {
                 return false;
             }
             var hasMember = random.nextBoolean();
+            if (!hasMember) {
+                var future = tree.add(new Event.DecideMemberDoesNotExist(id, key));
+                if (!future.isWorthExploring()) {
+                    future.visit();
+                    tree = future;
+                    nonMembers.add(key);
+                } else {
+                    hasMember = true;
+                }
+            }
             if (hasMember) {
-                var member = generateValue(new Complexity(10));
-                tree = tree.add(new Event.DecideMemberExists(id, key, valueToString(member)), false);
-                members.put(key, member);
-            } else {
-                tree = tree.add(new Event.DecideMemberDoesNotExist(id, key), false);
-                nonMembers.add(key);
+                while (true) {
+                    var member = generateValue(new Complexity(10));
+                    var future = tree.add(new Event.DecideMemberExists(id, key, valueToString(member)));
+                    if (future.isWorthExploring()) {
+                        future.visit();
+                        tree = future;
+                        members.put(key, member);
+                        break;
+                    }
+                }
             }
             return hasMember;
         }
