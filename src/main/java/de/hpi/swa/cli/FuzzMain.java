@@ -11,7 +11,7 @@ import org.graalvm.polyglot.Value;
 
 import de.hpi.swa.coverage.CoverageInstrument;
 import de.hpi.swa.generator.Complexity;
-import de.hpi.swa.generator.DecisionTree;
+import de.hpi.swa.generator.TraceTree;
 import de.hpi.swa.generator.Universe;
 
 // Notes:
@@ -80,8 +80,8 @@ public class FuzzMain {
             return;
         }
 
-        var tree = new DecisionTree();
-        for (int i = 0; i < 50; i++) {
+        var tree = new TraceTree();
+        for (int i = 0; i < 100; i++) {
             instrument.coverage.clear();
             var universe = new Universe(tree, new Random());
             universe.run(function, new Complexity(10));
@@ -96,9 +96,8 @@ public class FuzzMain {
             //     universe.tree.crash(e.getMessage());
             // }
             // instrument.coverage.printSummary();
+            System.out.println(tree);
         }
-        System.out.println("Decision Tree:");
-        System.out.println(tree);
     }
 
     public static void printException(Exception e) {
