@@ -1,6 +1,6 @@
 def foo(a):
-    if a.foo < 10:
-        print("Foobar")
+    if a.foo.bar.baz < 10:
+        print("This is interesting")
     else:
         print("Else")
 

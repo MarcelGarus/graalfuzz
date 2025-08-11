@@ -23,7 +23,7 @@ public class TraceTree {
 
         }
 
-        record Returns(String value) implements Event {
+        record Return(String value) implements Event {
 
         }
 
@@ -99,34 +99,64 @@ public class TraceTree {
         return sb.toString();
     }
 
+    private int qualityScore() {
+        return (anySuccessfulRun() ? 1000 : 0) + 10 * depth() + numVisits;
+    }
+
+    private int depth() {
+        return 1 + children.stream().mapToInt((child) -> child.depth()).max().orElse(0);
+    }
+
+    private boolean anySuccessfulRun() {
+        if (event instanceof Event.Return) {
+            return true;
+        }
+        return children.stream().anyMatch((child) -> child.anySuccessfulRun());
+    }
+
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_GREY = "\u001B[90m";
+
     private void toStringHelper(StringBuilder sb, int indent) {
-        sb.append("| ".repeat(indent));
+        sb.append(ANSI_GREY).append("| ".repeat(indent)).append(ANSI_RESET);
         switch (event) {
             case Event.Root root ->
                 sb.append("<root>");
             case Event.Run run ->
-                sb.append("run(" + run.arg + ")");
-            // case Event.AccessMember access ->
-            //     sb.append(access.objectId + "." + access.key);
-            case Event.DecideMemberExists member ->
-                sb.append("object_" + member.objectId + "." + member.key + " = " + member.value);
+                sb.append("run(").append(ANSI_BLUE).append(run.arg).append(ANSI_RESET).append(")");
+            case Event.DecideMemberExists member -> {
+                sb.append(ANSI_BLUE).append("object_").append(member.objectId).append(ANSI_RESET)
+                        .append(".").append(member.key).append(" = ")
+                        .append(ANSI_BLUE).append(member.value).append(ANSI_RESET);
+            }
             case Event.DecideMemberDoesNotExist member ->
-                sb.append("object_" + member.objectId + "." + member.key + " does not exist");
-            case Event.Returns returns ->
-                sb.append("return " + returns.value
-                );
-            case Event.Crash crash ->
-                sb.append("crash: " + crash.message);
-        };
-        if (wasForced) {
-            sb.append(" (forced)");
+                sb.append(ANSI_BLUE).append("object_").append(member.objectId).append(ANSI_RESET)
+                        .append(".").append(member.key)
+                        .append(" does not exist");
+            case Event.Return returns -> {
+                sb.append(ANSI_GREEN).append("return ")
+                        .append(ANSI_BLUE).append(returns.value).append(ANSI_RESET);
+            }
+            case Event.Crash crash -> {
+                sb.append(ANSI_RED).append("crash: ").append(crash.message).append(ANSI_RESET);
+            }
         }
-        sb.append(" [");
-        sb.append(numVisits);
-        sb.append(" runs]");
-        sb.append("\n");
-        for (TraceTree child : children) {
-            child.toStringHelper(sb, indent + 1);
+        sb.append(ANSI_GREY).append(" [").append(numVisits).append(" runs]").append(ANSI_RESET).append("\n");
+        children.sort((a, b) -> b.qualityScore() - a.qualityScore());
+        if (children.size() <= 5) {
+            for (TraceTree child : children) {
+                child.toStringHelper(sb, indent + 1);
+            }
+        } else {
+            for (TraceTree child : children.subList(0, 5)) {
+                child.toStringHelper(sb, indent + 1);
+            }
+            sb.append(ANSI_GREY).append("| ".repeat(indent + 1)).append(ANSI_RESET);
+            var numVisitsRest = children.subList(5, children.size()).stream().mapToInt((child) -> child.numVisits).sum();
+            sb.append("... ").append(ANSI_GREY).append("[").append(numVisitsRest).append(" runs]").append(ANSI_RESET).append("\n");
         }
     }
 }

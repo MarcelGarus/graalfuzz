@@ -42,7 +42,7 @@ public class Universe {
         try {
             var returnValue = function.execute(Value.asValue(input));
             System.out.println("Returned: " + returnValue);
-            tree.add(new Event.Returns(returnValue.toString()), assumeDeterminism);
+            tree.add(new Event.Return(returnValue.toString()), assumeDeterminism);
         } catch (PolyglotException e) {
             System.out.println("Crashed: " + e.getMessage());
             tree.add(new Event.Crash(e.getMessage()), assumeDeterminism);
@@ -103,7 +103,6 @@ public class Universe {
         public final int id;
         public final Map<String, Object> members = new HashMap<>();
         public final Set<String> nonMembers = new HashSet<>();
-        // private final Map<Long, Object> elements = new HashMap<>();
 
         public QuantumObject() {
             this.id = reserveId();
@@ -131,8 +130,7 @@ public class Universe {
 
         @Override
         public Object getMember(String key) {
-            return 5;
-            // return members.get(key);
+            return members.get(key);
         }
 
         @Override
