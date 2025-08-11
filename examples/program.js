@@ -6,16 +6,13 @@ function sum(list) {
     return sum;
 }
 
-function greet(amazingness) {
-    if (amazingness > 10) {
-        2 + 3;
-        1;
-        // console.log("Big " + amazingness);
-    } else {
-        // console.log("Smol " + amazingness);
-    }
+function length(list) {
+    if (!list) return 0;
+    1 + length(list.next);
 }
 
-var amazingness = sum([1, 2, 3]);
-greet(amazingness);
-greet
+function isLong(list) {
+    return length(list) > 5;
+}
+
+isLong

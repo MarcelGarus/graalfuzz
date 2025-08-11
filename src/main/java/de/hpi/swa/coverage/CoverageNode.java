@@ -39,18 +39,18 @@ final class CoverageNode extends ExecutionEventNode {
     @Override
     public void onEnter(VirtualFrame frame) {
         // if (!covered) {
-        instrument.coverage.addCovered(section);
-        CompilerDirectives.transferToInterpreterAndInvalidate();
+        // instrument.coverage.addCovered(section);
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
         // covered = true;
         // }
     }
 
-    // @Override
-    // public void onReturnValue(VirtualFrame vFrame, Object result) {
-    //     if (!covered) {
-    //         CompilerDirectives.transferToInterpreterAndInvalidate();
-    //         covered = true;
-    //         instrument.coverage.addCovered(section);
-    //     }
-    // }
+    @Override
+    public void onReturnValue(VirtualFrame vFrame, Object result) {
+        // if (!covered) {
+        // CompilerDirectives.transferToInterpreterAndInvalidate();
+        // covered = true;
+        instrument.coverage.addCovered(section);
+        // }
+    }
 }

@@ -1,7 +1,7 @@
 def foo(a):
-    if a.foo.bar.baz < 10:
-        print("This is interesting")
+    if a.foo.bar < 10:
+        return 42
     else:
-        print("Else")
+        return 123
 
 foo

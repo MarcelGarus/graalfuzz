@@ -2,8 +2,6 @@ package de.hpi.swa.generator;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
-import java.util.Random;
 
 public record Complexity(int value) {
 
@@ -13,44 +11,53 @@ public record Complexity(int value) {
         }
     }
 
-    public int generateInt(Random random) {
+    public int generateInt(Entropy entropy) {
         if (value == 0) {
             return 0;
         }
-        return random.nextInt(value);
+        return entropy.nextInt(value);
     }
 
-    public List<Complexity> split(int n, Random random) {
+    public Complexity[] split(int n, Entropy entropy) {
         if (n <= 0) {
-            return Collections.emptyList();
+            return new Complexity[0];
         }
         if (value == 0) {
-            var result = new ArrayList<Complexity>(n);
+            var result = new Complexity[n];
             for (int i = 0; i < n; i++) {
-                result.add(new Complexity(0));
+                result[i] = new Complexity(0);
             }
             return result;
         }
 
         var splits = new ArrayList<Integer>(n - 1);
         for (int i = 0; i < n - 1; i++) {
-            splits.add(random.nextInt(value + 1));
+            splits.add(entropy.nextInt(value + 1));
         }
         Collections.sort(splits);
 
-        var complexities = new ArrayList<Complexity>(n);
+        var complexities = new Complexity[n];
         int lastSplit = 0;
-        for (int split : splits) {
-            complexities.add(new Complexity(split - lastSplit));
+        for (int i = 0; i < n; i++) {
+            var split = splits.get(i);
+            complexities[i] = new Complexity(split - lastSplit);
             lastSplit = split;
         }
-        complexities.add(new Complexity(value - lastSplit));
-        Collections.shuffle(complexities, random);
+        // Shuffle.
+        for (int i = n; i > 1; i--) {
+            swap(complexities, i - 1, entropy.nextInt(i));
+        }
         return complexities;
     }
 
-    public List<Complexity> split(Random random) {
-        var n = generateInt(random);
-        return split(n, random);
+    private static void swap(Object[] arr, int i, int j) {
+        Object tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+
+    public Complexity[] split(Entropy entropy) {
+        var n = generateInt(entropy);
+        return split(n, entropy);
     }
 }

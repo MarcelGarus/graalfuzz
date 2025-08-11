@@ -55,7 +55,7 @@ public class TraceTree {
     public TraceTree add(Event event) {
         for (TraceTree child : children) {
             if (child.event.equals(event)) {
-                child.numVisits++;
+                child.visit();
                 return child;
             }
         }
@@ -64,16 +64,15 @@ public class TraceTree {
         return newChild;
     }
 
-    public boolean isWorthExploring() {
-        if (children.size() == 1) {
-            var childEvent = children.get(0).event;
-            if (childEvent instanceof Event.Return || childEvent instanceof Event.Crash) {
-                return false;
-            }
-        }
-        return true;
-    }
-
+    // public boolean isWorthExploring() {
+    //     if (children.size() == 1) {
+    //         var childEvent = children.get(0).event;
+    //         if (childEvent instanceof Event.Return || childEvent instanceof Event.Crash) {
+    //             return false;
+    //         }
+    //     }
+    //     return true;
+    // }
     @Override
     public boolean equals(Object o) {
         if (this == o) {
