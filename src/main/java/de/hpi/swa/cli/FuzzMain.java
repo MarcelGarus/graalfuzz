@@ -42,9 +42,9 @@ public class FuzzMain {
             // Simple Lox program for testing coverage
             var a = 10;
             if (a > 5) {
-                print "a is greater than 5";
+                print \"a is greater than 5\";
             } else {
-                print "a is not greater than 5";
+                print \"a is not greater than 5\";
             }
             for (var i = 0; i < 2; i = i + 1) {
                 print i;
@@ -84,17 +84,18 @@ public class FuzzMain {
             instrument.coverage.clear();
             var input = generator.generateValue(new Random(), new Complexity(10));
 
-            System.out.print("Input: " + input);
-            for (var j = input.toString().length(); j < 22; j++) {
-                System.out.print(" ");
-            }
+            System.out.println("\nRunning.");
             try {
                 function.execute(input);
                 instrument.coverage.printSummary();
             } catch (PolyglotException e) {
                 System.out.println("crashed: " + e.getMessage());
+                generator.crash(e.getMessage());
             }
         }
+        var tree = generator.getDecisionTree();
+        System.out.println("Decision Tree:");
+        System.out.println(tree);
     }
 
     public static void printException(Exception e) {
