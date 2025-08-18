@@ -10,58 +10,30 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class Coverage {
 
-    private final Set<SourceSection> loaded = new HashSet();
     private final Set<SourceSection> covered = new HashSet();
-
-    public void addLoaded(SourceSection section) {
-        loaded.add(section);
-    }
 
     public void addCovered(SourceSection section) {
         covered.add(section);
-    }
-
-    public Set<SourceSection> getLoaded() {
-        return loaded;
     }
 
     public Set<SourceSection> getCovered() {
         return covered;
     }
 
-    public Set<SourceSection> getNonCovered() {
-        final HashSet<SourceSection> nonCovered = new HashSet<>();
-        nonCovered.addAll(loaded);
-        nonCovered.removeAll(covered);
-        return nonCovered;
-    }
-
-    public void clear() {
-        covered.clear();
-    }
-
-    public void printSummary() {
-        // System.out.print("Covered " + covered.size() + " / " + loaded.size() + " expressions: ");
-        System.out.print("Coverage: ");
-        for (var section : loaded) {
-            var c = covered.contains(section) ? 'X' : '_';
-            System.out.print(c);
+    public static Coverage union(Coverage... coverages) {
+        Coverage result = new Coverage();
+        for (Coverage coverage : coverages) {
+            result.covered.addAll(coverage.covered);
         }
-        System.out.println();
+        return result;
     }
 
     public void printFull() {
-        printSummary();
-
         var allSources = new HashSet<Source>();
-        for (var section : loaded) {
-            allSources.add(section.getSource());
-        }
         for (var section : covered) {
             allSources.add(section.getSource());
         }
 
-        var loadedLines = linesByFile(loaded);
         var coveredLines = linesByFile(covered);
 
         for (var source : allSources) {
@@ -70,13 +42,9 @@ public final class Coverage {
                 continue;
             }
             System.out.println(path);
-            var loadedLinesOfSource = loadedLines.getOrDefault(source, new HashSet());
             var coveredLinesOfSource = coveredLines.getOrDefault(source, new HashSet());
             for (int i = 1; i <= source.getLineCount(); i++) {
-                var c = ' ';
-                if (loadedLinesOfSource.contains(i)) {
-                    c = coveredLinesOfSource.contains(i) ? '+' : '-';
-                }
+                var c = coveredLinesOfSource.contains(i) ? '+' : ' ';
                 System.out.println(String.format("%s %s", c, source.getCharacters(i)));
             }
         }
@@ -93,5 +61,35 @@ public final class Coverage {
             }
         }
         return out;
+    }
+
+    @Override
+    public String toString() {
+        return "Coverage{" + covered.size() + " sections covered}";
+    }
+
+    public String toString(Coverage reference) {
+        var sb = new StringBuilder();
+        for (var section : reference.covered) {
+            sb.append(covered.contains(section) ? 'X' : '_');
+        }
+        return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Coverage coverage = (Coverage) obj;
+        return covered.equals(coverage.covered);
+    }
+
+    @Override
+    public int hashCode() {
+        return covered.hashCode();
     }
 }

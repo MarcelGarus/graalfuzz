@@ -18,7 +18,7 @@ public final class CoverageInstrument extends TruffleInstrument {
 
     public static final String ID = "code-coverage";
 
-    public final Coverage coverage = new Coverage();
+    public Coverage coverage = new Coverage();
 
     @Override
     protected OptionDescriptors getOptionDescriptors() {
@@ -35,14 +35,10 @@ public final class CoverageInstrument extends TruffleInstrument {
     }
 
     private void enable(Env env) {
-        var filter = SourceSectionFilter.newBuilder().includeInternal(true).build();
+        var filter = SourceSectionFilter.newBuilder()
+                .includeInternal(true)
+                .build();
         var instrumenter = env.getInstrumenter();
-
-        // Each time sources are loaded, we remember the sections.
-        instrumenter.attachLoadSourceSectionListener(filter, (event) -> {
-            var section = event.getSourceSection();
-            coverage.addLoaded(section);
-        }, true);
 
         // Each time an AST node is created, this factory also creates a
         // wrapping node that tracks the coverage.

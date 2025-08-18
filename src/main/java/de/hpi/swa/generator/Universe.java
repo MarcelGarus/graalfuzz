@@ -9,16 +9,19 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 
+import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.generator.TraceTree.Event;
 
 public class Universe {
 
-    public Universe(TraceTree tree, Entropy entropy) {
+    public Universe(Entropy entropy, Coverage coverage, TraceTree tree) {
         this.entropy = entropy;
+        this.coverage = coverage;
         this.tree = tree;
     }
 
     public TraceTree tree;
+    public Coverage coverage;
     public Entropy entropy;
     private int nextId = 0;
 
@@ -39,10 +42,10 @@ public class Universe {
         try {
             var returnValue = function.execute(Value.asValue(input));
             System.out.println("Returned: " + returnValue);
-            tree.add(new Event.Return(returnValue.toString()));
+            tree.add(new Event.Return(returnValue.toString(), coverage));
         } catch (PolyglotException e) {
             System.out.println("Crashed: " + e.getMessage());
-            tree.add(new Event.Crash(e.getMessage()));
+            tree.add(new Event.Crash(e.getMessage(), coverage));
         }
     }
 

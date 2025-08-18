@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import de.hpi.swa.coverage.Coverage;
+
 public class TraceTree {
 
     public sealed interface Event {
@@ -23,11 +25,11 @@ public class TraceTree {
 
         }
 
-        record Return(String value) implements Event {
+        record Return(String value, Coverage coverage) implements Event {
 
         }
 
-        record Crash(String message) implements Event {
+        record Crash(String message, Coverage coverage) implements Event {
 
         }
     }
@@ -93,8 +95,29 @@ public class TraceTree {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        toStringHelper(sb, 0);
+        var allCoverages = collectAllCoverages();
+        var unionedCoverage = Coverage.union(allCoverages.toArray(new Coverage[0]));
+        toStringHelper(sb, 0, unionedCoverage);
         return sb.toString();
+    }
+    
+    private List<Coverage> collectAllCoverages() {
+        List<Coverage> coverages = new ArrayList<>();
+        collectAllCoveragesHelper(coverages);
+        return coverages;
+    }
+    
+    private void collectAllCoveragesHelper(List<Coverage> coverages) {
+        switch (event) {
+            case Event.Return returns -> coverages.add(returns.coverage);
+            case Event.Crash crash -> coverages.add(crash.coverage);
+            default -> {
+                // For other events, collect from children
+            }
+        }
+        for (TraceTree child : children) {
+            child.collectAllCoveragesHelper(coverages);
+        }
     }
 
     private int qualityScore() {
@@ -119,7 +142,7 @@ public class TraceTree {
     public static final String ANSI_GREY = "\u001B[90m";
     public static final int MAX_CHILDREN = 7;
 
-    private void toStringHelper(StringBuilder sb, int indent) {
+    private void toStringHelper(StringBuilder sb, int indent, Coverage unionedCoverage) {
         sb.append(ANSI_GREY).append("| ".repeat(indent)).append(ANSI_RESET);
         switch (event) {
             case Event.Root root ->
@@ -137,21 +160,21 @@ public class TraceTree {
                         .append(" does not exist");
             case Event.Return returns -> {
                 sb.append(ANSI_GREEN).append("return ")
-                        .append(ANSI_BLUE).append(returns.value).append(ANSI_RESET);
+                        .append(ANSI_BLUE).append(returns.value).append(ANSI_RESET).append(" ").append(returns.coverage.toString(unionedCoverage));
             }
             case Event.Crash crash -> {
-                sb.append(ANSI_RED).append("crash: ").append(crash.message).append(ANSI_RESET);
+                sb.append(ANSI_RED).append("crash: ").append(crash.message).append(ANSI_RESET).append(" ").append(crash.coverage.toString(unionedCoverage));
             }
         }
         sb.append(ANSI_GREY).append(" [").append(numVisits).append(" runs]").append(ANSI_RESET).append("\n");
         children.sort((a, b) -> b.qualityScore() - a.qualityScore());
         if (children.size() <= MAX_CHILDREN) {
             for (TraceTree child : children) {
-                child.toStringHelper(sb, indent + 1);
+                child.toStringHelper(sb, indent + 1, unionedCoverage);
             }
         } else {
             for (TraceTree child : children.subList(0, MAX_CHILDREN)) {
-                child.toStringHelper(sb, indent + 1);
+                child.toStringHelper(sb, indent + 1, unionedCoverage);
             }
             sb.append(ANSI_GREY).append("| ".repeat(indent + 1)).append(ANSI_RESET);
             var numVisitsRest = children.subList(MAX_CHILDREN, children.size()).stream().mapToInt((child) -> child.numVisits).sum();
