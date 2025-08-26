@@ -20,15 +20,21 @@ public class Universe {
         this.tree = tree;
     }
 
-    public TraceTree tree;
-    public Coverage coverage;
     public Entropy entropy;
+    public Coverage coverage;
+    public TraceTree tree;
+    public int numEvents = 0;
     private int nextId = 0;
 
     public int reserveId() {
         var id = nextId;
         nextId++;
         return id;
+    }
+
+    private void eventHappened(Event event) {
+        tree = tree.add(event);
+        numEvents++;
     }
 
     public void run(Value function, Complexity complexity) {
@@ -38,14 +44,14 @@ public class Universe {
             quantumObject.members.put("org.graalvm.python.embedding.PositionalArguments.is_positional_arguments", false);
         }
         System.out.println("Running with " + valueToString(input));
-        tree = tree.add(new Event.Run(valueToString(input)));
+        eventHappened(new Event.Run(valueToString(input)));
         try {
             var returnValue = function.execute(Value.asValue(input));
             System.out.println("Returned: " + returnValue);
-            tree.add(new Event.Return(returnValue.toString(), coverage));
+            eventHappened(new Event.Return(returnValue.toString(), coverage));
         } catch (PolyglotException e) {
             System.out.println("Crashed: " + e.getMessage());
-            tree.add(new Event.Crash(e.getMessage(), coverage));
+            eventHappened(new Event.Crash(e.getMessage(), coverage));
         }
     }
 
@@ -108,10 +114,10 @@ public class Universe {
             var hasMember = entropy.nextBoolean();
             if (hasMember) {
                 var member = generateValue(new Complexity(10));
-                tree = tree.add(new Event.DecideMemberExists(id, key, valueToString(member)));
+                eventHappened(new Event.DecideMemberExists(id, key, valueToString(member)));
                 members.put(key, member);
             } else {
-                tree = tree.add(new Event.DecideMemberDoesNotExist(id, key));
+                eventHappened(new Event.DecideMemberDoesNotExist(id, key));
                 nonMembers.add(key);
             }
             return hasMember;

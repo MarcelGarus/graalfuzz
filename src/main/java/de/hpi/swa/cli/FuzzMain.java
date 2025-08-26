@@ -9,9 +9,11 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
+import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
 import de.hpi.swa.generator.Complexity;
 import de.hpi.swa.generator.Entropy;
+import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.TraceTree;
 import de.hpi.swa.generator.Universe;
 
@@ -58,14 +60,25 @@ public class FuzzMain {
         }
 
         var tree = new TraceTree();
+        var pool = new Pool(0.1, 0.3); // 10% probability for new entropy, 30% mutation temperature
+        
         for (int i = 0; i < 1000; i++) {
-            var entropy = new Entropy(new Random().nextLong());
-            instrument.coverage.clear();
-            var universe = new Universe(tree, entropy);
+            var entropy = pool.createNewEntropy();
+            var coverage = new Coverage();
+            var universe = new Universe(entropy, coverage, tree);
+            instrument.coverage = coverage;
             tree.visit();
             universe.run(function, new Complexity(10));
-            instrument.coverage.printSummary();
+            System.out.println("Ran. Result: " + coverage + " and " + universe.numEvents + " events happened");
             entropy.printSummary();
+            
+            // Add the entropy and its results to the pool for future selection
+            pool.add(entropy, coverage, universe.numEvents);
+            
+            // Print pool stats every 100 iterations
+            if (i % 100 == 99) {
+                pool.printStats();
+            }
         }
         System.out.println(tree);
     }
