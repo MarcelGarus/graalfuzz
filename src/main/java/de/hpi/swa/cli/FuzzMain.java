@@ -7,24 +7,27 @@ import java.util.Random;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
-import de.hpi.swa.generator.Complexity;
-import de.hpi.swa.generator.Entropy;
 import de.hpi.swa.generator.Pool;
-import de.hpi.swa.generator.TraceTree;
-import de.hpi.swa.generator.Universe;
+import de.hpi.swa.generator.Value;
 
 public class FuzzMain {
 
     public static void main(String[] args) {
-        System.out.println("Hello, FuzzMain!");
+        System.out.println("Welcome to the Fuzzer!");
 
         var engine = Engine.newBuilder().option(CoverageInstrument.ID, "true").build();
         var context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
         var instrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
+
+        // Display available languages
+        System.out.print("Available languages:");
+        for (var lang : context.getEngine().getLanguages().keySet()) {
+            System.out.print(" " + lang);
+        }
+        System.out.println();
 
         if (instrument == null) {
             throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
@@ -32,8 +35,14 @@ public class FuzzMain {
 
         org.graalvm.polyglot.Source source;
         try {
-            File file = new File("examples/program.py");
-            source = org.graalvm.polyglot.Source.newBuilder("python", file).build();
+            // // Smalltalk
+            // File squeakFile = new File("examples/program.st");
+            // System.out.println("Using TruffleSqueak (Smalltalk) program");
+            // source = org.graalvm.polyglot.Source.newBuilder("smalltalk", squeakFile).build();
+
+            // Fallback to Python
+            File pythonFile = new File("examples/program.py");
+            source = org.graalvm.polyglot.Source.newBuilder("python", pythonFile).build();
         } catch (IOException e) {
             System.err.println("Could not read file.");
             e.printStackTrace();
@@ -42,7 +51,7 @@ public class FuzzMain {
 
         System.out.println("Running program.\n");
 
-        Value function;
+        org.graalvm.polyglot.Value function;
         try {
             function = context.eval(source);
         } catch (PolyglotException e) {
@@ -51,36 +60,28 @@ public class FuzzMain {
             return;
         }
 
-        System.err.println("The program returned this:");
-        System.out.println(function);
-
         if (function.isNull()) {
-            System.out.println("Returning because the code didn't evaluate to a function.");
+            System.out.println("Returning because the code didn't evaluate to a function:");
+            System.out.println(function);
             return;
         }
 
-        var tree = new TraceTree();
-        var pool = new Pool(0.1, 0.3); // 10% probability for new entropy, 30% mutation temperature
-        
+        // var tree = new TraceTree();
+        var pool = new Pool();
+        var random = new Random();
+
         for (int i = 0; i < 1000; i++) {
-            var entropy = pool.createNewEntropy();
-            var coverage = new Coverage();
-            var universe = new Universe(entropy, coverage, tree);
-            instrument.coverage = coverage;
-            tree.visit();
-            universe.run(function, new Complexity(10));
-            System.out.println("Ran. Result: " + coverage + " and " + universe.numEvents + " events happened");
-            entropy.printSummary();
-            
+            System.out.print("New run. ");
+            var trace = pool.createNewTrace();
+            instrument.coverage = new Coverage();
+            var result = de.hpi.swa.generator.Runner.run(function, trace, random);
+            System.out.print(String.format("%-20s", Value.format(result.getInput(), result.getUniverse())));
+            System.out.println("  Trace: " + result.getTrace().deduplicate());
+
             // Add the entropy and its results to the pool for future selection
-            pool.add(entropy, coverage, universe.numEvents);
-            
-            // Print pool stats every 100 iterations
-            if (i % 100 == 99) {
-                pool.printStats();
-            }
+            pool.add(result.getTrace(), instrument.coverage);
         }
-        System.out.println(tree);
+        // System.out.println(tree);
     }
 
     public static void printException(Exception e) {

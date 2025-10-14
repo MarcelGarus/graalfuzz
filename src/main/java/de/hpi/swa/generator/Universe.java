@@ -1,146 +1,60 @@
 package de.hpi.swa.generator;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
+import java.util.Random;
 
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyObject;
-
-import de.hpi.swa.coverage.Coverage;
-import de.hpi.swa.generator.TraceTree.Event;
+import de.hpi.swa.generator.Value.ObjectId;
 
 public class Universe {
 
-    public Universe(Entropy entropy, Coverage coverage, TraceTree tree) {
-        this.entropy = entropy;
-        this.coverage = coverage;
-        this.tree = tree;
+    private final Map<ObjectId, Object> objects = new HashMap<>();
+
+    public class Object {
+
+        public final Map<String, Value> members = new HashMap<>();
     }
 
-    public Entropy entropy;
-    public Coverage coverage;
-    public TraceTree tree;
-    public int numEvents = 0;
-    private int nextId = 0;
-
-    public int reserveId() {
-        var id = nextId;
-        nextId++;
+    public ObjectId createObject() {
+        var id = new ObjectId(objects.size());
+        objects.put(id, new Object());
         return id;
     }
 
-    private void eventHappened(Event event) {
-        tree = tree.add(event);
-        numEvents++;
+    public Object getOrCreateObject(ObjectId id) {
+        objects.putIfAbsent(id, new Object());
+        return objects.get(id);
     }
 
-    public void run(Value function, Complexity complexity) {
-        var input = generateValue(complexity);
-        if (input instanceof QuantumObject quantumObject) {
-            quantumObject.members.put("org.graalvm.python.embedding.KeywordArguments.is_keyword_arguments", false);
-            quantumObject.members.put("org.graalvm.python.embedding.PositionalArguments.is_positional_arguments", false);
-        }
-        System.out.println("Running with " + valueToString(input));
-        eventHappened(new Event.Run(valueToString(input)));
-        try {
-            var returnValue = function.execute(Value.asValue(input));
-            System.out.println("Returned: " + returnValue);
-            eventHappened(new Event.Return(returnValue.toString(), coverage));
-        } catch (PolyglotException e) {
-            System.out.println("Crashed: " + e.getMessage());
-            eventHappened(new Event.Crash(e.getMessage(), coverage));
-        }
+    public Object get(ObjectId id) {
+        return objects.get(id);
     }
 
-    static String valueToString(Object value) {
-        if (value == null) {
-            return "null";
-        }
-        if (value instanceof String) {
-            return "\"" + value + "\"";
-        }
-        return value.toString();
-    }
-
-    public Object generateValue(Complexity complexity) {
-        return switch (entropy.nextByte(6)) {
+    public Value generateValue(Random random) {
+        return switch (random.nextInt(6)) {
             case 0 ->
-                null;
+                new Value.Null();
             case 1 ->
-                entropy.nextBoolean();
+                new Value.Boolean(random.nextBoolean());
             case 2 ->
-                entropy.nextInt(100);
+                new Value.Int(random.nextInt(100));
             case 3 ->
-                (double) entropy.nextInt(100);
+                new Value.Double(random.nextDouble(100));
             case 4 ->
-                generateString(complexity);
+                new Value.StringValue(generateString(random));
             case 5 ->
-                new QuantumObject();
+                new Value.ObjectValue(createObject());
             default ->
                 throw new IllegalStateException("unreachable");
         };
     }
 
-    private String generateString(Complexity complexity) {
-        var length = complexity.generateInt(entropy);
+    private String generateString(Random random) {
+        var length = 10;
         var sb = new StringBuilder(length);
         for (var i = 0; i < length; i++) {
-            sb.append((char) ('a' + entropy.nextInt(26)));
+            sb.append((char) ('a' + random.nextInt(26)));
         }
         return sb.toString();
-    }
-
-    class QuantumObject implements ProxyObject { // ProxyArray, ProxyExecutable
-
-        public final int id;
-        public final Map<String, Object> members = new HashMap<>();
-        public final Set<String> nonMembers = new HashSet<>();
-
-        public QuantumObject() {
-            this.id = reserveId();
-        }
-
-        @Override
-        public boolean hasMember(String key) {
-            if (members.containsKey(key)) {
-                return true;
-            }
-            if (nonMembers.contains(key)) {
-                return false;
-            }
-            var hasMember = entropy.nextBoolean();
-            if (hasMember) {
-                var member = generateValue(new Complexity(10));
-                eventHappened(new Event.DecideMemberExists(id, key, valueToString(member)));
-                members.put(key, member);
-            } else {
-                eventHappened(new Event.DecideMemberDoesNotExist(id, key));
-                nonMembers.add(key);
-            }
-            return hasMember;
-        }
-
-        @Override
-        public Object getMember(String key) {
-            return members.get(key);
-        }
-
-        @Override
-        public void putMember(String key, Value value) {
-            members.put(key, value);
-        }
-
-        @Override
-        public Object getMemberKeys() {
-            return new String[0];
-        }
-
-        @Override
-        public String toString() {
-            return "object_" + id;
-        }
     }
 }

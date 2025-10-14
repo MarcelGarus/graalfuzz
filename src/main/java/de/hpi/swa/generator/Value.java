@@ -1,0 +1,122 @@
+package de.hpi.swa.generator;
+
+public sealed interface Value {
+
+    public class ObjectId {
+
+        public final int value;
+
+        public ObjectId(int value) {
+            this.value = value;
+        }
+
+        @Override
+        public String toString() {
+            return "$" + value;
+        }
+    }
+
+    record Null() implements Value {
+
+        @Override
+        public String toString() {
+            return "null";
+        }
+    }
+
+    record Boolean(boolean value) implements Value {
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
+    }
+
+    record Int(int value) implements Value {
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
+    }
+
+    record Double(double value) implements Value {
+
+        @Override
+        public String toString() {
+            return String.valueOf(value);
+        }
+    }
+
+    record StringValue(String value) implements Value {
+
+        @Override
+        public String toString() {
+            return "\"" + value + "\"";
+        }
+    }
+
+    record ObjectValue(ObjectId id) implements Value {
+
+        @Override
+        public String toString() {
+            return id.toString();
+        }
+    }
+
+    static Value fromObject(Object obj) {
+        if (obj == null) {
+            return new Value.Null();
+        }
+        if (obj instanceof java.lang.Boolean b) {
+            return new Value.Boolean(b);
+        }
+        if (obj instanceof Integer i) {
+            return new Value.Int(i);
+        }
+        if (obj instanceof java.lang.Double d) {
+            return new Value.Double(d);
+        }
+        if (obj instanceof String s) {
+            return new Value.StringValue(s);
+        }
+        throw new IllegalArgumentException("Unsupported object type: " + obj.getClass());
+    }
+
+    public static String format(Value value, Universe universe) {
+        var builder = new StringBuilder();
+        format(value, universe, builder);
+        return builder.toString();
+    }
+
+    static void format(Value value, Universe universe, StringBuilder builder) {
+        switch (value) {
+            case Value.Null() ->
+                builder.append("null");
+            case Value.Boolean(var bool) ->
+                builder.append(bool);
+            case Value.Int(var int_) ->
+                builder.append(int_);
+            case Value.Double(var double_) ->
+                builder.append(double_);
+            case Value.StringValue(var string) -> {
+                builder.append("\"");
+                builder.append(string);
+                builder.append("\"");
+            }
+            case Value.ObjectValue(var id) -> {
+                builder.append("{");
+                var quantumObject = universe.getOrCreateObject(id);
+                for (var member : quantumObject.members.entrySet()) {
+                    if (member.getValue() == null) {
+                        continue;
+                    }
+                    builder.append(member.getKey());
+                    builder.append(": ");
+                    format((Value) member.getValue(), universe, builder);
+                }
+                builder.append("}");
+            }
+        }
+    }
+}

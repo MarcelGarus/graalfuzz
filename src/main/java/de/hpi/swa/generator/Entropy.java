@@ -70,11 +70,39 @@ public class Entropy {
         return (nextInt() & 0x7fffffff) % max;
     }
 
-    public void printSummary() {
-        System.out.print("Entropy:");
-        for (var b : data) {
-            System.out.print(" " + b);
+    public Entropy copy() {
+        var copy = new Entropy(0);
+        copy.data = new ArrayList<>(this.data);
+        copy.cursor = this.cursor;
+        return copy;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
         }
-        System.out.println();
+        if (obj == null || getClass() != obj.getClass()) {
+            return false;
+        }
+        Entropy entropy = (Entropy) obj;
+        return cursor == entropy.cursor && data.equals(entropy.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return data.hashCode() * 31 + cursor;
+    }
+
+    @Override
+    public String toString() {
+        var sb = new StringBuilder();
+        for (var b : data) {
+            if (!sb.isEmpty()) {
+                sb.append(" ");
+            }
+            sb.append(b);
+        }
+        return sb.toString();
     }
 }
