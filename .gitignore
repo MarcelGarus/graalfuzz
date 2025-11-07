@@ -46,3 +46,12 @@ target/
 classpath
 
 graal_dumps/
+
+# VS Code Extension
+.vscode/
+
+vscode-extension/node_modules/
+vscode-extension/dist/
+vscode-extension/.vscode/
+vscode-extension/.vscode-test/
+vscode-extension/out/
