@@ -5,7 +5,7 @@
     <version>0.0.1</version>
     <properties>
         <antlr.version>4.13.2</antlr.version>
-        <graalvm.version>24.2.0</graalvm.version>
+        <graalvm.version>25.0.1</graalvm.version>
     </properties>
 
     <build>
@@ -210,6 +210,9 @@
                             <mainClass>de.hpi.swa.cli.FuzzMain</mainClass>
                             <fallback>false</fallback>
                             <verbose>true</verbose>
+                            <buildArgs>
+                                --initialize-at-build-time=de.hpi.swa.coverage.CoverageInstrumentProvider
+                            </buildArgs>
                         </configuration>
                     </plugin>
                 </plugins>
