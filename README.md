@@ -1,44 +1,48 @@
-# BYOPL 24 -- Lox Truffle Implementation
+# GraalFuzz 
 
-[![Build Status Github](https://github.com/hpi-swa-teaching/byopl24-00a/actions/workflows/maven.yml/badge.svg)](https://github.com/hpi-swa-teaching/byopl24-00a/actions?query=maven%3ACI)
+Fuzzing dynamic languages implemented with GraalVM's Truffle framework.
 
+It also contains a Lox implementation for testing purposes.
 The Lox implementation is developed as part of the Build Your Own Programming Language course at Software Architecture Group, Hasso Plattner Institute, Potsdam.
 
-## Getting Started
+## Java Maven Project
 
-See Getting Started section in [BYOPL-2024_Overview](https://1drv.ms/b/s!AosvRVbmrjPTm_YQOBq8GXW3BYNq5A?e=EaAI5S).
+### Getting Started
 
 For development, you can use Oracle JDK 21, OpenJDK 21, or any of its derivatives.
-For best performance use GraalVM for JDK 21 version 21.0.4.
+Use GraalVM version 25.0.1 (https://www.graalvm.org/downloads/).
 
-## Maven
+### Maven
 
 To directly use the command line, this might be helpful:
 
-### Compile ...
+#### Compile ...
 
 ```bash
-mvn package
+mvn compile
 ```
 
-### Run Tests
+Or for native image:
+```bash
+mvn -P native package
+```
+
+#### Run Tests
 
 ```bash
 mvn test
 ```
 
-### Running the main class
+#### Running the main class
 
-```bash
-mvn exec:java -Dexec.args="-c 'print true;'"
-```
+After compiling
+Run `graalfuzz.cmd` (Windows) or `./graalfuzz` (Unix).
 
-### Cleanup
+#### Cleanup
 
 ```bash
 mvn clean
 ```
 
-```bash
-mvn -P native package
-```
+## VS Code Extension
+See [vscode-extension/README.md](vscode-extension/README.md) for details.
