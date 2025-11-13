@@ -1,11 +1,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <groupId>de.hpi.swa</groupId>
-    <artifactId>lox-language</artifactId>
+    <artifactId>graalfuzz</artifactId>
     <version>0.0.1</version>
     <properties>
         <antlr.version>4.13.2</antlr.version>
-        <graalvm.version>24.2.0</graalvm.version>
+        <graalvm.version>25.0.1</graalvm.version>
     </properties>
 
     <build>
@@ -210,6 +210,9 @@
                             <mainClass>de.hpi.swa.cli.FuzzMain</mainClass>
                             <fallback>false</fallback>
                             <verbose>true</verbose>
+                            <buildArgs>
+                                --initialize-at-build-time=de.hpi.swa.coverage.CoverageInstrumentProvider
+                            </buildArgs>
                         </configuration>
                     </plugin>
                 </plugins>
