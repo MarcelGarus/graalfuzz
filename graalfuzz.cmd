@@ -8,4 +8,4 @@ IF ["%JAVA_HOME%"] == [""] (
     SET "JAVA=%JAVA_HOME%\bin\java.exe"
 )
 
-"%JAVA%" -cp "%CLASSPATH%" "de.hpi.swa.lox.cli.LoxMain" %*
+"%JAVA%" -cp "%CLASSPATH%" "de.hpi.swa.cli.FuzzMain" %*
