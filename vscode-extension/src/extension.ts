@@ -2,11 +2,11 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-import { createState, IState } from './types/state';
-import { IExtensionContext } from './types/context';
+import { createState, IExtensionContext, IState } from './types/state';
 
 import runFuzzerOnCurrentFile from './commands/runFuzzerOnCurrentFile';
 import stopFuzzer from './commands/stopFuzzer';
+import { cleanup } from './fuzzer/process';
 
 // Fuzzer run (long-lived streaming output)
 let state: IState;
@@ -24,11 +24,11 @@ export function activate(context: vscode.ExtensionContext) {
 	const extensionContext: IExtensionContext = {
 		context,
 		output,
+		state,
 	};
 
-	const runFuzzerCmd = vscode.commands.registerCommand('graalfuzz.runFuzzerOnCurrentFile', runFuzzerOnCurrentFile(state, extensionContext));
-	const stopFuzzerCmd = vscode.commands.registerCommand('graalfuzz.stopFuzzer', stopFuzzer(state, extensionContext));
-
+	const runFuzzerCmd = vscode.commands.registerCommand('graalfuzz.runFuzzerOnCurrentFile', runFuzzerOnCurrentFile(extensionContext));
+	const stopFuzzerCmd = vscode.commands.registerCommand('graalfuzz.stopFuzzer', stopFuzzer(extensionContext));
 	context.subscriptions.push(
 		runFuzzerCmd,
 		stopFuzzerCmd,
@@ -38,9 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-	if (state.process) {
-		state.process.kill();
-	}
+	cleanup(state);
 
 	state = createState();
 }

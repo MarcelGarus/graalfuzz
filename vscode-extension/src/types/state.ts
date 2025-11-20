@@ -1,13 +1,24 @@
-import { ChildProcessWithoutNullStreams } from "child_process";
-
 import * as vscode from "vscode";
 
+import { ChildProcessWithoutNullStreams } from "child_process";
+
+export interface IExtensionContext {
+    context: vscode.ExtensionContext;
+    output: vscode.OutputChannel;
+    state: IState;
+}
+
 export interface IState {
-    process: ChildProcessWithoutNullStreams | null;
+    processes: IProcessState[];
+}
+
+export interface IProcessState {
+    process?: ChildProcessWithoutNullStreams;
+    tmpFile?: string;
 }
 
 export const createState = ({
-    process = null,
+    processes = [],
 } = {}): IState => ({
-    process,
+    processes,
 });

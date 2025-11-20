@@ -1,14 +1,17 @@
 import * as vscode from 'vscode';
 
-import { IState } from '../types/state';
-import { IExtensionContext } from '../types/context';
+import { IExtensionContext, IState } from '../types/state';
+import { cleanup } from '../fuzzer/process';
 
-export default (state: IState, ctx: IExtensionContext) => async () => {
-    if (state.process) {
-        state.process!.kill();
-        state.process = null;
-        vscode.window.showInformationMessage('Fuzzer process terminated.');
-    } else {
-        vscode.window.showInformationMessage('No active fuzzer process.');
+export default (ctx: IExtensionContext) => async () => {
+    try {
+        if (ctx.state.processes) {
+            cleanup(ctx.state);
+            vscode.window.showInformationMessage('Fuzzer process terminated.');
+        } else {
+            vscode.window.showInformationMessage('No active fuzzer process.');
+        }
+    } catch (error) {
+        vscode.window.showErrorMessage(`Error while stopping fuzzer: ${(error as Error).message}`);
     }
 };
