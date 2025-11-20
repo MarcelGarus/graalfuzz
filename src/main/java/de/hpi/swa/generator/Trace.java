@@ -46,6 +46,10 @@ public class Trace {
 
     @Override
     public String toString() {
+        return toString(true);
+    }
+
+    public String toString(boolean colored) {
         if (entries.isEmpty()) {
             return "";
         }
@@ -61,10 +65,12 @@ public class Trace {
             if (!sb.isEmpty()) {
                 sb.append(" > ");
             }
-            if (entry instanceof TraceEntry.Decision) {
-                sb.append(ANSI_GREEN);
-            } else {
-                sb.append(ANSI_BLUE);
+            if (colored) {
+                if (entry instanceof TraceEntry.Decision) {
+                    sb.append(ANSI_GREEN);
+                } else {
+                    sb.append(ANSI_BLUE);
+                }
             }
             switch (entry) {
                 case Call(var arg) ->
@@ -84,7 +90,10 @@ public class Trace {
                 case Crash(var message) ->
                     sb.append("crash ").append(message);
             }
-            sb.append(ANSI_RESET);
+
+            if (colored) {
+                sb.append(ANSI_RESET);
+            }
         }
         return sb.toString();
     }

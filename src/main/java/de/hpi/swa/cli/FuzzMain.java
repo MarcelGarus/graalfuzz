@@ -22,6 +22,7 @@ public class FuzzMain {
         String language = "python";
         String code = null;
         String filePath = null;
+        Boolean colorStdOut = true;
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
             if (a.equals("--language") || a.equals("-l")) {
@@ -36,6 +37,8 @@ public class FuzzMain {
                 if (i + 1 < args.length) filePath = args[++i];
             } else if (a.startsWith("--file=")) {
                 filePath = a.substring("--file=".length());
+            } else if (a.equals("--tooling")) {
+                colorStdOut = false;
             }
         }
 
@@ -103,7 +106,7 @@ public class FuzzMain {
             instrument.coverage = new Coverage();
             var result = de.hpi.swa.generator.Runner.run(function, trace, random);
             System.out.print(String.format("%-20s", Value.format(result.getInput(), result.getUniverse())));
-            System.out.println("  Trace: " + result.getTrace().deduplicate());
+            System.out.println("  Trace: " + result.getTrace().deduplicate().toString(colorStdOut));
 
             // Add the entropy and its results to the pool for future selection
             pool.add(result.getTrace(), instrument.coverage);
