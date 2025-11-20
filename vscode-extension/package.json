@@ -9,13 +9,20 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "graalfuzz.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "graalfuzz.runFuzzer",
+        "title": "GraalFuzz: Run Fuzzer"
+      },
+      {
+        "command": "graalfuzz.stopFuzzer",
+        "title": "GraalFuzz: Stop Fuzzer"
       }
     ]
   },
