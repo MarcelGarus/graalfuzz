@@ -18,23 +18,21 @@ public class Trace {
         }
     }
 
-    record Call(Value arg) implements TraceEntry.Decision {
+    public record Call(Value arg) implements TraceEntry.Decision {
 
     }
 
-    record QueryMember(ObjectId id, String key) implements TraceEntry.Observation {
+    public record QueryMember(ObjectId id, String key) implements TraceEntry.Observation {
+    }
+
+    public record Member(ObjectId id, String key, Value value) implements TraceEntry.Decision {
 
     }
 
-    record Member(ObjectId id, String key, Value value) implements TraceEntry.Decision {
-
+    public record Return(String value) implements TraceEntry.Observation {
     }
 
-    record Return(String value) implements TraceEntry.Observation {
-
-    }
-
-    record Crash(String message) implements TraceEntry.Observation {
+    public record Crash(String message) implements TraceEntry.Observation {
 
     }
 

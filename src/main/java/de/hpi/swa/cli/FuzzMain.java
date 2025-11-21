@@ -8,12 +8,12 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 
-import com.google.gson.Gson;
-
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
+import de.hpi.swa.generator.Runner;
 import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Value;
+import de.hpi.swa.serialization.GsonConfig;
 
 public class FuzzMain {
 
@@ -105,7 +105,7 @@ public class FuzzMain {
         // Fuzzing loop
         var pool = new Pool();
         var random = new Random();
-        var gson = new Gson();
+        var gson = GsonConfig.createGson();
         
         for (int i = 0; i < 1000; i++) {
             if (!tooling) {
@@ -114,7 +114,7 @@ public class FuzzMain {
 
             var trace = pool.createNewTrace();
             instrument.coverage = new Coverage();
-            var result = de.hpi.swa.generator.Runner.run(function, trace, random);
+            var result = Runner.run(function, trace, random);
             var deduplicatedResult = result.withDeduplicatedTrace();
 
             if (tooling) {
