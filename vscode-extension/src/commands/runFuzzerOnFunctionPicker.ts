@@ -23,13 +23,15 @@ export default (ctx: IExtensionContext) => async () => {
         );
 
         // Filter to functions only
-        const functions = symbols.filter(s =>
-            s.kind === vscode.SymbolKind.Function ||
-            s.kind === vscode.SymbolKind.Method
-        );
+        const functions = symbols.filter(s => s.kind === vscode.SymbolKind.Function);
+        const methods = symbols.filter(s => s.kind === vscode.SymbolKind.Method);
 
         if (functions.length === 0) {
-            vscode.window.showErrorMessage('No functions found in file');
+            if (methods.length > 0) {
+                vscode.window.showErrorMessage('No functions found in file. Methods are currently not supported.');
+            } else {
+                vscode.window.showErrorMessage('No functions found in file.');
+            }
             return;
         }
 
