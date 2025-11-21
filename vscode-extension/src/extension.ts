@@ -7,6 +7,7 @@ import { createState, IExtensionContext, IState } from './types/state';
 import runFuzzerOnCurrentFile from './commands/runFuzzerOnCurrentFile';
 import stopFuzzer from './commands/stopFuzzer';
 import { cleanup } from './fuzzer/process';
+import runFuzzerOnSelectedFunction from './commands/runFuzzerOnSelectedFunction';
 
 // Fuzzer run (long-lived streaming output)
 let state: IState;
@@ -28,9 +29,11 @@ export function activate(context: vscode.ExtensionContext) {
 	};
 
 	const runFuzzerCmd = vscode.commands.registerCommand('graalfuzz.runFuzzerOnCurrentFile', runFuzzerOnCurrentFile(extensionContext));
+	const runFuzzerOnSelectedFunctionCmd = vscode.commands.registerCommand('graalfuzz.runFuzzerOnSelectedFunction', runFuzzerOnSelectedFunction(extensionContext));
 	const stopFuzzerCmd = vscode.commands.registerCommand('graalfuzz.stopFuzzer', stopFuzzer(extensionContext));
 	context.subscriptions.push(
 		runFuzzerCmd,
+		runFuzzerOnSelectedFunctionCmd,
 		stopFuzzerCmd,
 		output
 	);
