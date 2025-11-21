@@ -13,11 +13,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "graalfuzz.helloWorld",
-        "title": "Hello World"
-      },
-      {
-        "command": "graalfuzz.runFuzzer",
+        "command": "graalfuzz.runFuzzerOnCurrentFile",
         "title": "GraalFuzz: Run Fuzzer"
       },
       {
