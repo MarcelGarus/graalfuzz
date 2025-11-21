@@ -45,7 +45,6 @@ Results Visualization
 - python
 - javascript
 - smalltalk
-- lox
 
 # Phase 3: Additional Features
 
