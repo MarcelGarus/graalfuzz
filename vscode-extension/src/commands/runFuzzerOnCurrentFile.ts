@@ -9,8 +9,6 @@ export default (ctx: IExtensionContext) => async () => {
             vscode.window.showWarningMessage('Fuzzer already running. Stop it first.');
             return;
         }
-        ctx.output.show(true);
-        ctx.output.appendLine('Starting graalfuzz...');
         // Get the content of the current active editor
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -19,7 +17,10 @@ export default (ctx: IExtensionContext) => async () => {
         }
         const file = editor.document.fileName;
         console.log(file);
-    
+
+        ctx.output.show(true);
+        ctx.output.appendLine('Starting graalfuzz...');
+
         const process = spawnFuzzerProcess(ctx.context.extensionPath, file);
         const processState: IProcessState = { process };
         ctx.state.processes.push(processState);
