@@ -17,6 +17,7 @@ export default (ctx: IExtensionContext) => async () => {
         }
 
         // Get all symbols from the current file
+        // TODO: Decide whether we should use GraalVM or VS Code's APIs for this
         const symbols = await vscode.commands.executeCommand<vscode.DocumentSymbol[]>(
             'vscode.executeDocumentSymbolProvider',
             editor.document.uri
