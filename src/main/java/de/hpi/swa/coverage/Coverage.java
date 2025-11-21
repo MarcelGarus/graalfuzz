@@ -41,11 +41,11 @@ public final class Coverage {
             if (path == null) {
                 continue;
             }
-            System.out.println(path);
+            System.err.println(path);
             var coveredLinesOfSource = coveredLines.getOrDefault(source, new HashSet());
             for (int i = 1; i <= source.getLineCount(); i++) {
                 var c = coveredLinesOfSource.contains(i) ? '+' : ' ';
-                System.out.println(String.format("%s %s", c, source.getCharacters(i)));
+                System.err.println(String.format("%s %s", c, source.getCharacters(i)));
             }
         }
     }

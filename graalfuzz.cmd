@@ -1,3 +1,4 @@
+@echo off
 FOR /F "USEBACKQ delims=" %%F IN (`mvn -q exec:exec "-Dexec.executable=cmd" "-Dexec.args='/c echo %%classpath'"`) DO SET "CLASSPATH=%%F"
 SET CLASSPATH=%CLASSPATH:"=%
 SET "CLASSPATH=%CLASSPATH%;%~dp0target\classes"

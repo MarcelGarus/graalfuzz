@@ -42,6 +42,10 @@ public abstract class Runner {
         public Trace getTrace() {
             return trace;
         }
+
+        public RunResult withDeduplicatedTrace() {
+            return new RunResult(universe, input, trace.deduplicate());
+        }
     }
 
     private static void run(org.graalvm.polyglot.Value function, Universe universe, Value input, Trace trace, Random random) {
