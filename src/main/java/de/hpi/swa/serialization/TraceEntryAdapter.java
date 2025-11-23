@@ -31,6 +31,7 @@ public class TraceEntryAdapter implements JsonSerializer<Trace.TraceEntry>, Json
             }
             case Trace.Return ret -> {
                 result.addProperty("type", "Return");
+                result.addProperty("typeName", ret.typeName());
                 result.addProperty("value", ret.value());
             }
             case Trace.Crash crash -> {
@@ -59,7 +60,11 @@ public class TraceEntryAdapter implements JsonSerializer<Trace.TraceEntry>, Json
                 obj.get("key").getAsString(),
                 context.deserialize(obj.get("value"), Value.class)
             );
-            case "Return" -> new Trace.Return(obj.get("value").getAsString());
+            case "Return" -> new Trace.Return(
+                obj.get("typeName").getAsString(), 
+                obj.get("value").getAsString(),
+                null  // polyglotValue can't be deserialized
+            );
             case "Crash" -> new Trace.Crash(obj.get("message").getAsString());
             default -> throw new JsonParseException("Unknown TraceEntry type: " + type);
         };

@@ -29,7 +29,21 @@ public class Trace {
 
     }
 
-    public record Return(String value) implements TraceEntry.Observation {
+    public record Return(String typeName, String value, org.graalvm.polyglot.Value polyglotValue) implements TraceEntry.Observation {
+        
+        // Factory method to create from polyglot.Value
+        public static Return fromPolyglotValue(org.graalvm.polyglot.Value polyglotValue) {
+            String typeName;
+            try {
+                org.graalvm.polyglot.Value metaObject = polyglotValue.getMetaObject();
+                typeName = metaObject != null ? metaObject.getMetaQualifiedName() : "unknown";
+            } catch (Exception e) {
+                typeName = "unknown";
+            }
+            
+            String stringValue = polyglotValue.toString();
+            return new Return(typeName, stringValue, polyglotValue);
+        }
     }
 
     public record Crash(String message) implements TraceEntry.Observation {
@@ -83,8 +97,8 @@ public class Trace {
                         sb.append(value);
                     }
                 }
-                case Return(var value) ->
-                    sb.append("return ").append(value);
+                case Return ret ->
+                    sb.append("return ").append(ret.value()).append(" (").append(ret.typeName()).append(")");
                 case Crash(var message) ->
                     sb.append("crash ").append(message);
             }
