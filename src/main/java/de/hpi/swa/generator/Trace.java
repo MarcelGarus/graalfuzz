@@ -18,23 +18,21 @@ public class Trace {
         }
     }
 
-    record Call(Value arg) implements TraceEntry.Decision {
+    public record Call(Value arg) implements TraceEntry.Decision {
 
     }
 
-    record QueryMember(ObjectId id, String key) implements TraceEntry.Observation {
+    public record QueryMember(ObjectId id, String key) implements TraceEntry.Observation {
+    }
+
+    public record Member(ObjectId id, String key, Value value) implements TraceEntry.Decision {
 
     }
 
-    record Member(ObjectId id, String key, Value value) implements TraceEntry.Decision {
-
+    public record Return(String value) implements TraceEntry.Observation {
     }
 
-    record Return(String value) implements TraceEntry.Observation {
-
-    }
-
-    record Crash(String message) implements TraceEntry.Observation {
+    public record Crash(String message) implements TraceEntry.Observation {
 
     }
 
@@ -46,6 +44,10 @@ public class Trace {
 
     @Override
     public String toString() {
+        return toString(true);
+    }
+
+    public String toString(boolean colored) {
         if (entries.isEmpty()) {
             return "";
         }
@@ -61,10 +63,12 @@ public class Trace {
             if (!sb.isEmpty()) {
                 sb.append(" > ");
             }
-            if (entry instanceof TraceEntry.Decision) {
-                sb.append(ANSI_GREEN);
-            } else {
-                sb.append(ANSI_BLUE);
+            if (colored) {
+                if (entry instanceof TraceEntry.Decision) {
+                    sb.append(ANSI_GREEN);
+                } else {
+                    sb.append(ANSI_BLUE);
+                }
             }
             switch (entry) {
                 case Call(var arg) ->
@@ -84,7 +88,10 @@ public class Trace {
                 case Crash(var message) ->
                     sb.append("crash ").append(message);
             }
-            sb.append(ANSI_RESET);
+
+            if (colored) {
+                sb.append(ANSI_RESET);
+            }
         }
         return sb.toString();
     }

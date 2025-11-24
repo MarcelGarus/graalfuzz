@@ -10,18 +10,22 @@ import org.graalvm.polyglot.PolyglotException;
 
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
+import de.hpi.swa.generator.Runner;
 import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Value;
+import de.hpi.swa.serialization.GsonConfig;
 
 public class FuzzMain {
 
     public static void main(String[] args) {
-        System.out.println("Welcome to the Fuzzer!");
+        System.err.println("Welcome to the Fuzzer!");
 
         // Parse CLI options
         String language = "python";
         String code = null;
         String filePath = null;
+        Boolean colorStdOut = true;
+        Boolean tooling = false;
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
             if (a.equals("--language") || a.equals("-l")) {
@@ -36,6 +40,10 @@ public class FuzzMain {
                 if (i + 1 < args.length) filePath = args[++i];
             } else if (a.startsWith("--file=")) {
                 filePath = a.substring("--file=".length());
+            } else if (a.equals("--no-color")) {
+                colorStdOut = false;
+            } else if (a.equals("--tooling")) {
+                tooling = true;
             }
         }
 
@@ -44,11 +52,11 @@ public class FuzzMain {
         var instrument = engine.getInstruments().get(CoverageInstrument.ID).lookup(CoverageInstrument.class);
 
         // Display available languages
-        System.out.print("Available languages:");
+        System.err.print("Available languages:");
         for (var lang : context.getEngine().getLanguages().keySet()) {
-            System.out.print(" " + lang);
+            System.err.print(" " + lang);
         }
-        System.out.println();
+        System.err.println();
 
         if (instrument == null) {
             throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
@@ -58,17 +66,17 @@ public class FuzzMain {
         org.graalvm.polyglot.Source source;
         try {
             if (code != null) {
-                System.out.println("Using inline " + language + " code from CLI");
+                System.err.println("Using inline " + language + " code from CLI");
                 // Unescape newlines and tabs passed via CLI
                 code = code.replace("\\n", "\n").replace("\\t", "\t");
                 source = org.graalvm.polyglot.Source.newBuilder(language, code, "cli-inline").build();
             } else if (filePath != null) {
                 var file = new File(filePath);
-                System.out.println("Using " + language + " file: " + file.getPath());
+                System.err.println("Using " + language + " file: " + file.getPath());
                 source = org.graalvm.polyglot.Source.newBuilder(language, file).build();
             } else {
                 var pythonFile = new File("examples/program.py");
-                System.out.println("Using default python program: " + pythonFile.getPath());
+                System.err.println("Using default python program: " + pythonFile.getPath());
                 source = org.graalvm.polyglot.Source.newBuilder("python", pythonFile).build();
             }
         } catch (IOException e) {
@@ -77,7 +85,7 @@ public class FuzzMain {
             return;
         }
 
-        System.out.println("Running program.\n");
+        System.err.println("Running program.\n");
 
         org.graalvm.polyglot.Value function;
         try {
@@ -89,21 +97,32 @@ public class FuzzMain {
         }
 
         if (function.isNull()) {
-            System.out.println("Returning because the code didn't evaluate to a function:");
-            System.out.println(function);
+            System.err.println("Returning because the code didn't evaluate to a function:");
+            System.err.println(function);
             return;
         }
 
         // Fuzzing loop
         var pool = new Pool();
         var random = new Random();
+        var gson = GsonConfig.createGson();
+        
         for (int i = 0; i < 1000; i++) {
-            System.out.print("New run. ");
+            if (!tooling) {
+                System.out.print("New run. ");
+            }
+
             var trace = pool.createNewTrace();
             instrument.coverage = new Coverage();
-            var result = de.hpi.swa.generator.Runner.run(function, trace, random);
-            System.out.print(String.format("%-20s", Value.format(result.getInput(), result.getUniverse())));
-            System.out.println("  Trace: " + result.getTrace().deduplicate());
+            var result = Runner.run(function, trace, random);
+            var deduplicatedResult = result.withDeduplicatedTrace();
+
+            if (tooling) {
+                System.out.println(gson.toJson(deduplicatedResult));
+            } else {
+                System.out.print(String.format("%-20s", Value.format(deduplicatedResult.getInput(), deduplicatedResult.getUniverse())));
+                System.out.println("  Trace: " + deduplicatedResult.getTrace().toString(colorStdOut));
+            }
 
             // Add the entropy and its results to the pool for future selection
             pool.add(result.getTrace(), instrument.coverage);

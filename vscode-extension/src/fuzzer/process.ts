@@ -12,7 +12,7 @@ export const spawnFuzzerProcess = (extensionPath: string, file: string): ChildPr
     const script = isWin
         ? path.join(extensionPath, '..', 'graalfuzz.cmd')
         : path.join(extensionPath, '..', 'graalfuzz.sh');
-    const args = ['--file', `"${file}"`];
+    const args = ['--file', `"${file}"`, '--no-color'];
     console.log(`Spawning fuzzer process: ${script} ${args.join(' ')}`);
     return spawn(script, args, { stdio: 'pipe', shell: isWin, cwd: path.join(extensionPath, '..') });
 };

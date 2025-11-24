@@ -96,10 +96,10 @@ public class Pool {
     }
 
     public void printStats() {
-        System.out.println("Pool stats: " + entries.size() + " entries");
+        System.err.println("Pool stats: " + entries.size() + " entries");
         for (int i = 0; i < entries.size(); i++) {
             var entry = entries.get(i);
-            System.out.println("  Entry " + i + ": coverage=" + entry.coverage.getCovered().size()
+            System.err.println("  Entry " + i + ": coverage=" + entry.coverage.getCovered().size()
                     + ", quality=" + entry.quality + ": " + entry.trace);
         }
     }
