@@ -53,7 +53,7 @@ public abstract class Runner {
         try {
             var polyglotInput = toPolyglotValue(input, universe, trace, random);
             var returnValue = function.execute(polyglotInput);
-            trace.add(new Return(returnValue.toString()));
+            trace.add(Trace.Return.fromPolyglotValue(returnValue));
         } catch (PolyglotException e) {
             trace.add(new Crash(e.getMessage()));
         }
