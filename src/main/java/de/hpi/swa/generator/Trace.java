@@ -31,7 +31,6 @@ public class Trace {
 
     public record Return(String typeName, String value, org.graalvm.polyglot.Value polyglotValue) implements TraceEntry.Observation {
         
-        // Factory method to create from polyglot.Value
         public static Return fromPolyglotValue(org.graalvm.polyglot.Value polyglotValue) {
             String typeName;
             try {
