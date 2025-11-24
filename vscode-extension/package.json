@@ -20,7 +20,6 @@
         "command": "graalfuzz.runFuzzerOnSelection",
         "title": "GraalFuzz: Run Fuzzer on Selected Code"
       },
-      
       {
         "command": "graalfuzz.stopFuzzer",
         "title": "GraalFuzz: Stop Fuzzer"

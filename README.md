@@ -2,9 +2,6 @@
 
 Fuzzing dynamic languages implemented with GraalVM's Truffle framework.
 
-It also contains a Lox implementation for testing purposes.
-The Lox implementation is developed as part of the Build Your Own Programming Language course at Software Architecture Group, Hasso Plattner Institute, Potsdam.
-
 ## Java Maven Project
 
 ### Getting Started
