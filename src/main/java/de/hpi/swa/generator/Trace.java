@@ -60,6 +60,7 @@ public class Trace {
         return toString(true);
     }
 
+    @SuppressWarnings("unused")
     public String toString(boolean colored) {
         if (entries.isEmpty()) {
             return "";

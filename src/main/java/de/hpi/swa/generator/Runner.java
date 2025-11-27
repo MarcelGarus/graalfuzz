@@ -9,7 +9,6 @@ import de.hpi.swa.generator.Trace.Call;
 import de.hpi.swa.generator.Trace.Crash;
 import de.hpi.swa.generator.Trace.Member;
 import de.hpi.swa.generator.Trace.QueryMember;
-import de.hpi.swa.generator.Trace.Return;
 
 public abstract class Runner {
 

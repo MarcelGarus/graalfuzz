@@ -1,10 +1,10 @@
 package de.hpi.swa.generator;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+// import java.util.ArrayList;
+// import java.util.List;
+// import java.util.Objects;
 
-import de.hpi.swa.coverage.Coverage;
+// import de.hpi.swa.coverage.Coverage;
 
 public class TraceTree {
 

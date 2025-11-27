@@ -10,7 +10,7 @@ import com.oracle.truffle.api.source.SourceSection;
 
 public final class Coverage {
 
-    private final Set<SourceSection> covered = new HashSet();
+    private final Set<SourceSection> covered = new HashSet<SourceSection>();
 
     public void addCovered(SourceSection section) {
         covered.add(section);
@@ -42,7 +42,7 @@ public final class Coverage {
                 continue;
             }
             System.err.println(path);
-            var coveredLinesOfSource = coveredLines.getOrDefault(source, new HashSet());
+            var coveredLinesOfSource = coveredLines.getOrDefault(source, new HashSet<Integer>());
             for (int i = 1; i <= source.getLineCount(); i++) {
                 var c = coveredLinesOfSource.contains(i) ? '+' : ' ';
                 System.err.println(String.format("%s %s", c, source.getCharacters(i)));
@@ -54,7 +54,7 @@ public final class Coverage {
         var out = new HashMap<Source, Set<Integer>>();
         for (var section : sections) {
             var source = section.getSource();
-            out.putIfAbsent(source, new HashSet());
+            out.putIfAbsent(source, new HashSet<Integer>());
             var lines = out.get(source);
             for (int i = section.getStartLine(); i <= section.getEndLine(); i++) {
                 lines.add(i);
