@@ -68,7 +68,6 @@ const logFuzzerResults = (output: vscode.OutputChannel, results: IFuzzerResult[]
         } else {
             output.append(`Unexpected last trace entry type: ${outcome.type}`);
         }
-        output.appendLine('---');
     });
 };
 
