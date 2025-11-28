@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 
-import { pipeProcessOutToVSCodeOutput, removeFromStateOnceExited, spawnFuzzerProcess } from '../fuzzer/process';
-import { IExtensionContext, IProcessState } from '../types/state';
+import { removeFromStateOnceExited, spawnFuzzerProcess, writeProcessOutputToState } from '../fuzzer/process';
+import { IProcessState } from '../types/state';
+import { IExtensionContext } from '../types/context';
 
 export default (ctx: IExtensionContext) => async () => {
     try {
@@ -9,8 +10,6 @@ export default (ctx: IExtensionContext) => async () => {
             vscode.window.showWarningMessage('Fuzzer already running. Stop it first.');
             return;
         }
-        ctx.output.show(true);
-        ctx.output.appendLine('Starting graalfuzz...');
         // Get the content of the current active editor
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
@@ -19,12 +18,15 @@ export default (ctx: IExtensionContext) => async () => {
         }
         const file = editor.document.fileName;
         console.log(file);
-    
+
+        ctx.output.show(true);
+        ctx.output.appendLine('Starting graalfuzz...');
+
         const process = spawnFuzzerProcess(ctx.context.extensionPath, file);
         const processState: IProcessState = { process };
         ctx.state.processes.push(processState);
         removeFromStateOnceExited(processState, ctx.state);
-        pipeProcessOutToVSCodeOutput(processState, ctx.output);
+        writeProcessOutputToState(ctx, processState); // -> onFuzzerResultsReady event
     } catch (error) {
         vscode.window.showErrorMessage(`Error running fuzzer on current file: ${(error as Error).message}`);
     }
