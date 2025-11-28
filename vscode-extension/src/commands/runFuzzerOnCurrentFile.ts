@@ -19,9 +19,6 @@ export default (ctx: IExtensionContext) => async () => {
         const file = editor.document.fileName;
         console.log(file);
 
-        ctx.output.show(true);
-        ctx.output.appendLine('Starting graalfuzz...');
-
         const process = spawnFuzzerProcess(ctx.context.extensionPath, file);
         const processState: IProcessState = { process };
         ctx.state.processes.push(processState);
