@@ -21,7 +21,7 @@ export const handleFuzzerResults = async (ctx: IExtensionContext, processState: 
 };
 
 const addDecorationsForFuzzerResults = (ctx: IExtensionContext, results: IFuzzerResult[]) => {
-    // TODO: In state keep track of which results have been decorated for which editors (in a map in the general state). Then the event listener can listen to those changes.
+    // TODO: In state keep track of which results have been decorated for which editors (in a map in the general state). Then the event listener can listen to those changes. Since fuzzer takes some time, the user might have switched files, and results will be displayed in wrong file.
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
         vscode.window.showErrorMessage('No active editor to add fuzzer result decorations to.');
@@ -34,8 +34,9 @@ const addDecorationsForFuzzerResults = (ctx: IExtensionContext, results: IFuzzer
 };
 
 const addDecorationForFuzzerResult = (editor: vscode.TextEditor, result: IFuzzerResult) => {
+    // TODO: Avoid adding duplicate decorations for same result. Need to remove previous decorations first.
     // TODO: Find the right line number to add the decoration to (either from GraalVM or through pattern matching in here)
-    const lineNumber = 1; // 1-indexed
+    const lineNumber = editor.document.lineCount; // 1-indexed
     const decorationString = resultToDecorationString(result);
     applyDecoration(editor, lineNumber, decorationString);
 };
