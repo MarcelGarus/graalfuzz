@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
-import { pipeProcessOutToVSCodeOutput, removeFromStateOnceExited, spawnFuzzerProcess, writeToTempFile } from '../fuzzer/process';
-import { IExtensionContext, IProcessState } from '../types/state';
+import { pipeProcessOutToVSCodeOutput, removeFromStateOnceExited, spawnFuzzerProcess } from '../fuzzer/process';
+import { IProcessState } from '../types/state';
+import { IExtensionContext } from '../types/context';
+import { getCurrentSelection, writeToTempFile } from '../utils';
 
 export default (ctx: IExtensionContext) => async () => {
     try {
@@ -28,23 +30,10 @@ export default (ctx: IExtensionContext) => async () => {
         ctx.output.show(true);
         ctx.output.appendLine('Starting graalfuzz...');
 
-        processState.process = spawnFuzzerProcess(ctx.context.extensionPath, currentSelectionTmpFile);
+        processState.process = spawnFuzzerProcess(ctx.context.extensionPath, currentSelectionTmpFile, false);
         removeFromStateOnceExited(processState, ctx.state);
         pipeProcessOutToVSCodeOutput(processState, ctx.output);
     } catch (error) {
         vscode.window.showErrorMessage(`Error running fuzzer on selection: ${(error as Error).message}`);
     }
-};
-
-const getCurrentSelection = (): string | null => {
-    const editor = vscode.window.activeTextEditor;
-    if (editor) {
-        const selection = editor.selection;
-        if (selection && !selection.isEmpty) {
-            const selectionRange = new vscode.Range(selection.start.line, selection.start.character, selection.end.line, selection.end.character);
-            const highlighted = editor.document.getText(selectionRange);
-            return highlighted;
-        }
-    }
-    return null;
 };

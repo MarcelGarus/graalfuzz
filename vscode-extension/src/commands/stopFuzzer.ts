@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
-import { IExtensionContext, IState } from '../types/state';
 import { cleanup } from '../fuzzer/process';
+import { IExtensionContext } from '../types/context';
 
 export default (ctx: IExtensionContext) => async () => {
     try {
