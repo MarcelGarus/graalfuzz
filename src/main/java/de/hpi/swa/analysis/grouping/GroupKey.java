@@ -9,36 +9,20 @@ import de.hpi.swa.generator.Trace;
 import de.hpi.swa.generator.Trace.Return;
 import de.hpi.swa.generator.Trace.Crash;
 import de.hpi.swa.generator.Pool;
+import de.hpi.swa.generator.Shape;
 
 public sealed interface GroupKey {
 
-    record InputShape(String value) implements GroupKey {
+    record InputShape(Shape shape) implements GroupKey {
+
         public static InputShape from(Value value, Universe universe) {
-            if (value instanceof Value.Null)
-                return new InputShape("null");
-            if (value instanceof Value.Boolean)
-                return new InputShape("boolean");
-            if (value instanceof Value.Int)
-                return new InputShape("int");
-            if (value instanceof Value.Double)
-                return new InputShape("double");
-            if (value instanceof Value.StringValue)
-                return new InputShape("string");
-            if (value instanceof Value.ObjectValue objVal) {
-                var obj = universe.get(objVal.id());
-                if (obj == null)
-                    return new InputShape("object{}");
-                String keys = obj.members.keySet().stream()
-                        .sorted()
-                        .collect(Collectors.joining(","));
-                return new InputShape("object{" + keys + "}");
-            }
-            return new InputShape("unknown");
+            var shape = Shape.fromValue(value, universe);
+            return new InputShape(shape);
         }
 
         @Override
         public String toString() {
-            return "InputShape:" + value;
+            return "InputShape:" + shape.toString();
         }
     }
 
