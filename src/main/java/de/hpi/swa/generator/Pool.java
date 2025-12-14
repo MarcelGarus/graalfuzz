@@ -1,7 +1,7 @@
 package de.hpi.swa.generator;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 import de.hpi.swa.coverage.Coverage;
@@ -22,16 +22,24 @@ public class Pool {
         }
     }
 
-    private final List<PoolEntry> entries;
+    private final Map<Trace, PoolEntry> entries;
     private final Random random;
 
     public Pool() {
-        this.entries = new ArrayList<>();
+        this.entries = new HashMap<>();
         this.random = new Random();
     }
 
     public void add(Trace trace, Coverage coverage) {
-        entries.add(new PoolEntry(trace, coverage));
+        // Use deduplicated trace as key for consistent hashing
+        Trace keyTrace = trace.deduplicate();
+        PoolEntry newEntry = new PoolEntry(keyTrace, coverage);
+        
+        // Only add or replace if new entry has better quality
+        PoolEntry existing = entries.get(keyTrace);
+        if (existing == null || newEntry.quality > existing.quality) {
+            entries.put(keyTrace, newEntry);
+        }
     }
 
     public Trace createNewTrace() {
@@ -50,45 +58,51 @@ public class Pool {
     }
 
     private PoolEntry selectWeightedEntry() {
-        if (entries.size() == 1) {
-            return entries.get(0);
+        var poolEntries = entries.values();
+        if (poolEntries.size() == 1) {
+            return poolEntries.iterator().next();
         }
 
-        // var maxQuality = entries.stream().mapToDouble(entry -> entry.quality).max().getAsDouble();
-        // for (var entry : entries) {
-        //     if (entry.quality == maxQuality) {
-        //         return entry;
-        //     }
-        // }
-        double totalQuality = entries.stream()
+        double totalQuality = poolEntries.stream()
                 .mapToDouble(entry -> entry.quality)
                 .sum();
 
         if (totalQuality == 0.0) {
-            return entries.get(random.nextInt(entries.size()));
+            int randomIndex = random.nextInt(poolEntries.size());
+            return poolEntries.stream().skip(randomIndex).findFirst().orElseThrow();
         }
 
         double randomValue = random.nextDouble() * totalQuality;
         double cumulativeQuality = 0.0;
 
-        for (var entry : entries) {
+        for (var entry : poolEntries) {
             cumulativeQuality += entry.quality;
             if (randomValue <= cumulativeQuality) {
                 return entry;
             }
         }
 
-        // Fallback to last entry (should not happen with proper math)
-        return entries.get(entries.size() - 1);
+        // Fallback to any entry (should not happen with proper math)
+        return poolEntries.iterator().next();
     }
 
     private boolean isWorthExploring(Trace trace) {
-        for (var entry : entries) {
-            if (entry.trace.startsWith(trace) && entry.trace.numDecisions() == trace.numDecisions()) {
+        for (var keyTrace : entries.keySet()) {
+            if (keyTrace.startsWith(trace) && keyTrace.numDecisions() == trace.numDecisions()) {
                 return false;
             }
         }
         return true;
+    }
+
+    public Coverage getCoverage(Trace trace) throws IllegalArgumentException {
+        Trace keyTrace = trace.deduplicate();
+        PoolEntry entry = entries.get(keyTrace);
+        if (entry != null) {
+            return entry.coverage;
+        } else {
+            throw new IllegalArgumentException("Trace not found in pool.");
+        }
     }
 
     public int size() {
@@ -97,10 +111,11 @@ public class Pool {
 
     public void printStats() {
         System.err.println("Pool stats: " + entries.size() + " entries");
-        for (int i = 0; i < entries.size(); i++) {
-            var entry = entries.get(i);
+        int i = 0;
+        for (var entry : entries.values()) {
             System.err.println("  Entry " + i + ": coverage=" + entry.coverage.getCovered().size()
                     + ", quality=" + entry.quality + ": " + entry.trace);
+            i++;
         }
     }
 }
