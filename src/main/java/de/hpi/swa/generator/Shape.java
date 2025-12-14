@@ -1,0 +1,77 @@
+package de.hpi.swa.generator;
+
+import java.util.List;
+
+import de.hpi.swa.generator.Value.ObjectId;
+
+public sealed interface Shape {
+    record Null() implements Shape {
+        @Override
+        public String toString() {
+            return "null";
+        }
+    }
+
+    record Boolean() implements Shape {
+        @Override
+        public String toString() {
+            return "boolean";
+        }
+    }
+
+    record Int() implements Shape {
+        @Override
+        public String toString() {
+            return "int";
+        }
+    }
+
+    record Double() implements Shape {
+        @Override
+        public String toString() {
+            return "double";
+        }
+    }
+
+    record StringShape() implements Shape {
+        @Override
+        public String toString() {
+            return "string";
+        }
+    }
+
+    record ObjectShape(ObjectId id, Universe universe) implements Shape {
+        List<String> keys() {
+            var obj = universe.get(id);
+            return obj.members.keySet().stream().sorted().toList();
+        }
+
+        @Override
+        public String toString() {
+            var obj = universe.get(id);
+            List<String> memberShapes = obj.members.entrySet().stream()
+                    .filter(e -> e.getValue() != null)
+                    .map(e -> e.getKey() + ": " + Shape.fromValue(e.getValue(), universe).toString())
+                    .sorted()
+                    .toList();
+            return "{" + String.join(", ", memberShapes) + "}";
+        }
+    }
+
+    public static Shape fromValue(Value value, Universe universe) {
+        return switch (value) {
+            case Value.Null v ->
+                new Shape.Null();
+            case Value.Boolean v ->
+                new Shape.Boolean();
+            case Value.Int v ->
+                new Shape.Int();
+            case Value.Double v ->
+                new Shape.Double();
+            case Value.StringValue v ->
+                new Shape.StringShape();
+            case Value.ObjectValue objVal ->
+                new Shape.ObjectShape(objVal.id(), universe);
+        };
+    }
+}
