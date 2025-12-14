@@ -1,6 +1,7 @@
 package de.hpi.swa.generator;
 
 import java.util.List;
+import java.util.Set;
 
 import de.hpi.swa.generator.Value.ObjectId;
 
@@ -41,9 +42,20 @@ public sealed interface Shape {
     }
 
     record ObjectShape(ObjectId id, Universe universe) implements Shape {
-        List<String> keys() {
+        public ObjectShape {
+            if (universe.get(id) == null) {
+                throw new IllegalArgumentException("ObjectId " + id + " does not exist in the universe");
+            }
+        }
+
+        public Set<String> keys() {
             var obj = universe.get(id);
-            return obj.members.keySet().stream().sorted().toList();
+            return obj.members.keySet();
+        }
+
+        public Shape at(String key) {
+            var obj = universe.get(id);
+            return Shape.fromValue(obj.members.get(key), universe);
         }
 
         @Override
