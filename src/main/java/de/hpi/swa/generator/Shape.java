@@ -2,6 +2,7 @@ package de.hpi.swa.generator;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import de.hpi.swa.generator.Value.ObjectId;
 
@@ -50,12 +51,20 @@ public sealed interface Shape {
 
         public Set<String> keys() {
             var obj = universe.get(id);
-            return obj.members.keySet();
+            return obj.members.entrySet().stream()
+                    .filter(entry -> entry.getValue() != null)
+                    .map(entry -> entry.getKey())
+                    .collect(Collectors.toSet());
         }
 
         public Shape at(String key) {
             var obj = universe.get(id);
-            return Shape.fromValue(obj.members.get(key), universe);
+            var value = obj.members.get(key);
+            if (value == null) {
+                return null;
+            } else {
+                return Shape.fromValue(value, universe);
+            }
         }
 
         @Override
@@ -63,7 +72,7 @@ public sealed interface Shape {
             var obj = universe.get(id);
             List<String> memberShapes = obj.members.entrySet().stream()
                     .filter(e -> e.getValue() != null)
-                    .map(e -> e.getKey() + ": " + Shape.fromValue(e.getValue(), universe).toString())
+                    .map(e -> e.getKey() + ": " + at(e.getKey()).toString())
                     .sorted()
                     .toList();
             return "{" + String.join(", ", memberShapes) + "}";
