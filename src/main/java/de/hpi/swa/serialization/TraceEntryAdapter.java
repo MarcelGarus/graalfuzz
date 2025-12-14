@@ -62,8 +62,7 @@ public class TraceEntryAdapter implements JsonSerializer<Trace.TraceEntry>, Json
             );
             case "Return" -> new Trace.Return(
                 obj.get("typeName").getAsString(), 
-                obj.get("value").getAsString(),
-                null  // polyglotValue can't be deserialized
+                obj.get("value").getAsString()
             );
             case "Crash" -> new Trace.Crash(obj.get("message").getAsString());
             default -> throw new JsonParseException("Unknown TraceEntry type: " + type);

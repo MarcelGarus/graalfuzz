@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 
 import de.hpi.swa.generator.Trace;
 import de.hpi.swa.generator.Value;
+import de.hpi.swa.generator.Runner;
 
 public class GsonConfig {
     
@@ -14,6 +15,7 @@ public class GsonConfig {
 
     public static GsonBuilder configure(GsonBuilder builder) {
         return builder
+            .registerTypeAdapter(Runner.RunResult.class, new RunResultAdapter())
             .registerTypeAdapter(Trace.TraceEntry.class, new TraceEntryAdapter())
             .registerTypeAdapter(Value.class, new ValueAdapter());
     }

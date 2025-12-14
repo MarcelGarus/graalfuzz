@@ -7,6 +7,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 
 import de.hpi.swa.generator.Trace.Call;
 import de.hpi.swa.generator.Trace.Crash;
+import de.hpi.swa.generator.Trace.Return;
 import de.hpi.swa.generator.Trace.Member;
 import de.hpi.swa.generator.Trace.QueryMember;
 
@@ -24,11 +25,19 @@ public abstract class Runner {
         var universe = startingWith.toUniverse();
         var input = ((Call) startingWith.entries.get(0)).arg();
         var trace = new Trace();
-        run(function, universe, input, trace, random);
-        return new RunResult(universe, input, trace);
+        var output = run(function, universe, input, trace, random);
+        return new RunResult(universe, input, output, trace);
     }
 
-    public record RunResult(Universe universe, Value input, Trace trace) {
+    public sealed interface FunctionResult {
+        record Normal(String typeName, String value) implements FunctionResult {
+        }
+
+        record Crash(String message, java.util.List<String> stackTrace) implements FunctionResult {
+        }
+    }
+
+    public record RunResult(Universe universe, Value input, FunctionResult output, Trace trace) {
 
         public Universe getUniverse() {
             return universe;
@@ -38,24 +47,56 @@ public abstract class Runner {
             return input;
         }
 
+        public FunctionResult getOutput() {
+            return output;
+        }
+
+        public boolean didCrash() {
+            return switch (output) {
+                case FunctionResult.Crash(var msg, var stackTrace) -> true;
+                default -> false;
+            };
+        }
+
         public Trace getTrace() {
             return trace;
         }
 
         public RunResult withDeduplicatedTrace() {
-            return new RunResult(universe, input, trace.deduplicate());
+            return new RunResult(universe, input, output, trace.deduplicate());
         }
     }
 
-    private static void run(org.graalvm.polyglot.Value function, Universe universe, Value input, Trace trace, Random random) {
+    private static FunctionResult run(org.graalvm.polyglot.Value function, Universe universe, Value input, Trace trace, Random random) {
         trace.add(new Call(input));
         try {
             var polyglotInput = toPolyglotValue(input, universe, trace, random);
             var returnValue = function.execute(polyglotInput);
-            trace.add(Trace.Return.fromPolyglotValue(returnValue));
+
+            var typeName = getTypeName(returnValue);
+            String stringValue = returnValue.toString();
+
+            trace.add(new Return(typeName, stringValue));
+            return new FunctionResult.Normal(typeName, stringValue);
         } catch (PolyglotException e) {
             trace.add(new Crash(e.getMessage()));
+            // map in java over e.getStackTrace() to arraylist of strings
+            var stackTrace = java.util.Arrays.stream(e.getStackTrace())
+                    .map(StackTraceElement::toString)
+                    .toList();
+            return new FunctionResult.Crash(e.getMessage(), stackTrace);
         }
+    }
+
+    private static String getTypeName(org.graalvm.polyglot.Value polyglotValue) {
+        try {
+            org.graalvm.polyglot.Value metaObject = polyglotValue.getMetaObject();
+            if (metaObject != null) {
+                return metaObject.getMetaQualifiedName();
+            }
+        } catch (Exception e) { }
+
+        return "unknown";
     }
 
     public static org.graalvm.polyglot.Value toPolyglotValue(Value value, Universe universe, Trace trace, Random random) {
