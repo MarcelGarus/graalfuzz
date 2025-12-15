@@ -23,26 +23,15 @@ public class Trace {
     }
 
     public record QueryMember(ObjectId id, String key) implements TraceEntry.Observation {
+
     }
 
     public record Member(ObjectId id, String key, Value value) implements TraceEntry.Decision {
 
     }
 
-    public record Return(String typeName, String value, org.graalvm.polyglot.Value polyglotValue) implements TraceEntry.Observation {
-        
-        public static Return fromPolyglotValue(org.graalvm.polyglot.Value polyglotValue) {
-            String typeName;
-            try {
-                org.graalvm.polyglot.Value metaObject = polyglotValue.getMetaObject();
-                typeName = metaObject != null ? metaObject.getMetaQualifiedName() : "unknown";
-            } catch (Exception e) {
-                typeName = "unknown";
-            }
-            
-            String stringValue = polyglotValue.toString();
-            return new Return(typeName, stringValue, polyglotValue);
-        }
+    public record Return(String typeName, String value) implements TraceEntry.Observation {
+
     }
 
     public record Crash(String message) implements TraceEntry.Observation {
@@ -177,5 +166,19 @@ public class Trace {
             result.add(entry);
         }
         return result;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj)
+            return true;
+        if (!(obj instanceof Trace other))
+            return false;
+        return entries.equals(other.entries);
+    }
+
+    @Override
+    public int hashCode() {
+        return entries.hashCode();
     }
 }
