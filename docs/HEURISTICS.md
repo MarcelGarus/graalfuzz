@@ -12,22 +12,21 @@ Group examples by their input structure (e.g., `number`, `string`, `null`, `arra
 *   **Rationale:** Different types lead to different code paths and meaningful behaviors.
 *   **Ordering:** Shapes leading to diverse outputs or exceptions rank higher.
 
-### 2. Group by Coverage / Path Hash
-*Second most important dimension: distinct branches → distinct behaviors.*
+### 2. Group by Coverage / Path Hash / Output
+*Second most important dimension: distinct branches → distinct behaviors → distinct output.*
 Inside input groups, group executions by a path hash (e.g., XOR of branch IDs).
 *   **Captures:** Conditionals, nested decisions, early returns, loops.
 *   **Ordering:** Rare paths (corner cases) > Very long paths (complex behavior) > Minimal paths (baseline).
+*   **Output Type:** Each path (assuming deterministic behavior) specifies an exact output type.
 
-### 3. Group by Output
-
-#### 3a. Group by Exception Type
+#### 2a. Group by Exception Type
 *Essential to show crash/failure modes separately.*
 Inside path groups, split into:
 *   No exception
 *   Exception (by type)
 *   **Ordering:** Exceptions always rank high. Rare exception types outrank common ones.
 
-#### 3b. Group by Output Type / Shape
+#### 2b. Group by Output Type / Shape
 *Final grouping inside each behavioral group.*
 Group by output structure (e.g., `number`, `boolean`, `void`, `undefined`).
 *   **Ordering:** Rare output types, outliers, or structural changes are prioritized.
