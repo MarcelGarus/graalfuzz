@@ -35,8 +35,6 @@ public class AnalysisEngine {
             keyMap.put(r, createKey(r, pool, groupingStrategy));
         }
 
-        AnalysisContext context = new AnalysisContext(results, new ArrayList<>(keyMap.values()));
-
         Map<GroupKey, List<RunResult>> groups = new HashMap<>();
         for (var entry : keyMap.entrySet()) {
             groups.computeIfAbsent(entry.getValue(), k -> new ArrayList<>()).add(entry.getKey());
@@ -49,12 +47,12 @@ public class AnalysisEngine {
             GroupKey key = entry.getKey();
             List<RunResult> items = entry.getValue();
 
-            Map<String, Double> groupScores = getKeyScoresRecursively(key, context, keyScoreCache);
+            Map<String, Double> groupScores = getKeyScoresRecursively(key, keyScoreCache);
             double groupTotalScore = groupScores.values().stream().mapToDouble(Double::doubleValue).sum();
 
             List<ScoredRunResult> sortedItems = items.stream()
                     .map(r -> {
-                        Map<String, Double> itemScores = scoreItem(r, context);
+                        Map<String, Double> itemScores = scoreItem(r);
                         double itemTotalScore = itemScores.values().stream().mapToDouble(Double::doubleValue).sum();
                         return ScoredRunResult.from(r, itemTotalScore, itemScores, groupScores, key);
                     })
@@ -69,7 +67,7 @@ public class AnalysisEngine {
         return scoredGroups;
     }
 
-    private Map<String, Double> getKeyScoresRecursively(GroupKey key, AnalysisContext context,
+    private Map<String, Double> getKeyScoresRecursively(GroupKey key,
             Map<GroupKey, Map<String, Double>> cache) {
         if (cache.containsKey(key)) {
             return cache.get(key);
@@ -79,14 +77,14 @@ public class AnalysisEngine {
 
         if (key instanceof GroupKey.Composite c) {
             for (GroupKey sub : c.parts()) {
-                Map<String, Double> subScores = getKeyScoresRecursively(sub, context, cache);
+                Map<String, Double> subScores = getKeyScoresRecursively(sub, cache);
                 subScores.forEach((k, v) -> scores.merge(k, v, Double::sum));
             }
         } else {
             List<Heuristic.KeyHeuristic<?>> heuristics = keyHeuristics.get(key.getClass());
             if (heuristics != null) {
                 for (Heuristic.KeyHeuristic<?> h : heuristics) {
-                    double s = getScore(key, context, h);
+                    double s = getScore(key, h);
                     scores.put(h.getName(), s);
                 }
             }
@@ -97,16 +95,16 @@ public class AnalysisEngine {
     }
 
     @SuppressWarnings("unchecked")
-    private double getScore(GroupKey key, AnalysisContext context, Heuristic.KeyHeuristic<?> h) {
+    private double getScore(GroupKey key, Heuristic.KeyHeuristic<?> h) {
         // Safe cast because we registered it with the correct type
         Heuristic.KeyHeuristic<GroupKey> typedH = (Heuristic.KeyHeuristic<GroupKey>) h;
-        return typedH.score(key, context);
+        return typedH.score(key);
     }
 
-    private Map<String, Double> scoreItem(RunResult item, AnalysisContext context) {
+    private Map<String, Double> scoreItem(RunResult item) {
         Map<String, Double> scores = new HashMap<>();
         for (var h : itemHeuristics) {
-            scores.put(h.getName(), h.score(item, context));
+            scores.put(h.getName(), h.score(item));
         }
         return scores;
     }
