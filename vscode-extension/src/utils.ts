@@ -12,7 +12,6 @@ export const applyDecoration = (editor: vscode.TextEditor, line: number, suggest
     }
   });
 
-  // get the end of the line with the specified line number
   const lineLength = editor.document.lineAt(line - 1).text.length;
   const range = new vscode.Range(
     new vscode.Position(line - 1, lineLength),
