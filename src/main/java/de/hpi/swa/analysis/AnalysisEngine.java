@@ -30,22 +30,18 @@ public class AnalysisEngine {
         if (results.isEmpty())
             return Collections.emptyList();
 
-        // 1. Generate Keys
         Map<RunResult, GroupKey> keyMap = new HashMap<>();
         for (RunResult r : results) {
             keyMap.put(r, createKey(r, pool, groupingStrategy));
         }
 
-        // 2. Build Context
         AnalysisContext context = new AnalysisContext(results, new ArrayList<>(keyMap.values()));
 
-        // 3. Group Results
         Map<GroupKey, List<RunResult>> groups = new HashMap<>();
         for (var entry : keyMap.entrySet()) {
             groups.computeIfAbsent(entry.getValue(), k -> new ArrayList<>()).add(entry.getKey());
         }
 
-        // 4. Score Groups and Items
         List<ResultGroup> scoredGroups = new ArrayList<>();
         Map<GroupKey, Map<String, Double>> keyScoreCache = new HashMap<>();
 
@@ -53,11 +49,9 @@ public class AnalysisEngine {
             GroupKey key = entry.getKey();
             List<RunResult> items = entry.getValue();
 
-            // Score Key (Memoized)
             Map<String, Double> groupScores = getKeyScoresRecursively(key, context, keyScoreCache);
             double groupTotalScore = groupScores.values().stream().mapToDouble(Double::doubleValue).sum();
 
-            // Score Items
             List<ScoredRunResult> sortedItems = items.stream()
                     .map(r -> {
                         Map<String, Double> itemScores = scoreItem(r, context);
@@ -70,7 +64,6 @@ public class AnalysisEngine {
             scoredGroups.add(new ResultGroup(key, sortedItems, groupTotalScore, groupScores));
         }
 
-        // 5. Sort Groups
         scoredGroups.sort(Comparator.comparingDouble(ResultGroup::score).reversed());
 
         return scoredGroups;
