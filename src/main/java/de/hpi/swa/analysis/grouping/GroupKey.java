@@ -22,7 +22,7 @@ public sealed interface GroupKey {
 
         @Override
         public String toString() {
-            return "InputShape:" + shape.toString();
+            return "InputShape: " + shape.toString();
         }
     }
 
@@ -37,7 +37,7 @@ public sealed interface GroupKey {
 
         @Override
         public String toString() {
-            return "PathHash:" + hash;
+            return "PathHash(" + length + ")";
         }
     }
 
@@ -57,7 +57,7 @@ public sealed interface GroupKey {
 
         @Override
         public String toString() {
-            return "OutputShape:" + value;
+            return "OutputShape: " + value;
         }
     }
 
@@ -79,7 +79,7 @@ public sealed interface GroupKey {
 
         @Override
         public String toString() {
-            return "Exception:" + value;
+            return "Exception: " + value;
         }
     }
 
