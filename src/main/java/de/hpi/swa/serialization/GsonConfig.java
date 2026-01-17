@@ -17,7 +17,6 @@ public class GsonConfig {
     public static GsonBuilder configure(GsonBuilder builder) {
         return builder
             .registerTypeAdapter(Double.class, new NaNAsNullAdapter())
-            .registerTypeAdapter(double.class, new NaNAsNullAdapter())
             .registerTypeAdapter(Runner.RunResult.class, new RunResultAdapter())
             .registerTypeAdapter(Trace.TraceEntry.class, new TraceEntryAdapter())
             .registerTypeAdapter(Value.class, new ValueAdapter())
