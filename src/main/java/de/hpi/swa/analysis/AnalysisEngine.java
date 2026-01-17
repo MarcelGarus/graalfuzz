@@ -174,9 +174,6 @@ public class AnalysisEngine {
     private GroupKey createKey(RunResult r, Pool pool, GroupingStrategy groupingStrategy) {
         return switch (groupingStrategy) {
             case GroupingStrategy.NoGroups s -> new GroupKey.Generic("All");
-            case GroupingStrategy.CompositeGroups c -> {
-                yield new GroupKey.Composite(c.groups());
-            }
             case GroupingStrategy.CompositeAllGroups c -> {
                 var k1 = GroupKey.InputShape.from(r.getInput(), r.getUniverse());
                 var k2 = GroupKey.PathHash.from(r.getTrace(), pool);
