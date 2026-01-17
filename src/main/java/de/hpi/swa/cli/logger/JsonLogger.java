@@ -12,7 +12,6 @@ public class JsonLogger implements ResultLogger {
 
     @Override
     public void logRun(RunResult result) {
-        // Complicated way to add a "type" field to the serialized JSON
         var jsonElement = gson.toJsonTree(result);
         if (jsonElement.isJsonObject()) {
             jsonElement.getAsJsonObject().addProperty("type", "run");
@@ -22,14 +21,12 @@ public class JsonLogger implements ResultLogger {
 
     @Override
     public void logAnalysis(List<ResultGroup> groupList) {
-        // Create a structured map for JSON output
         var groupsWithTopSamples = Map.of(
                 "type", "analysis",
                 "groups", groupList.stream()
                         .map(g -> g.top(3))
                         .toList());
 
-        // Print the structured map as JSON
         System.out.println(gson.toJson(groupsWithTopSamples));
     }
 }
