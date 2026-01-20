@@ -5,6 +5,6 @@ public sealed interface GroupingStrategy {
     record NoGroups() implements GroupingStrategy {
     }
 
-    record CompositeGroups() implements GroupingStrategy {
+    record CompositeAllGroups() implements GroupingStrategy {
     }
 }

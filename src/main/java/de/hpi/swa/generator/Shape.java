@@ -77,6 +77,57 @@ public sealed interface Shape {
                     .toList();
             return "{" + String.join(", ", memberShapes) + "}";
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (!(obj instanceof ObjectShape other))
+                return false;
+
+            // Compare only the id and the structure of the object, not the universe
+            // reference
+            if (!this.id.equals(other.id))
+                return false;
+
+            var thisObj = this.universe.get(this.id);
+            var otherObj = other.universe.get(other.id);
+
+            if (thisObj == null && otherObj == null)
+                return true;
+            if (thisObj == null || otherObj == null)
+                return false;
+
+            if (!thisObj.members.keySet().equals(otherObj.members.keySet()))
+                return false;
+
+            for (String key : thisObj.members.keySet()) {
+                Shape thisShape = at(key);
+                Shape otherShape = other.at(key);
+                if (thisShape == null && otherShape == null)
+                    continue;
+                if (thisShape == null || otherShape == null)
+                    return false;
+                if (!thisShape.equals(otherShape))
+                    return false;
+            }
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            var obj = universe.get(id);
+            if (obj == null)
+                return id.hashCode();
+
+            int result = id.hashCode();
+            for (String key : obj.members.keySet()) {
+                Shape shape = at(key);
+                result = 31 * result + (shape != null ? shape.hashCode() : 0);
+            }
+            return result;
+        }
     }
 
     public static Shape fromValue(Value value, Universe universe) {

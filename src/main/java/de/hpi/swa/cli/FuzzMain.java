@@ -2,18 +2,24 @@ package de.hpi.swa.cli;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 
+import de.hpi.swa.analysis.AnalysisEngine;
+import de.hpi.swa.analysis.grouping.GroupingStrategy;
+import de.hpi.swa.analysis.grouping.ResultGroup;
+import de.hpi.swa.cli.logger.ConsoleLogger;
+import de.hpi.swa.cli.logger.JsonLogger;
+import de.hpi.swa.cli.logger.ResultLogger;
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.coverage.CoverageInstrument;
-import de.hpi.swa.generator.Runner;
 import de.hpi.swa.generator.Pool;
-import de.hpi.swa.generator.Value;
-import de.hpi.swa.serialization.GsonConfig;
+import de.hpi.swa.generator.Runner;
 
 public class FuzzMain {
 
@@ -26,24 +32,30 @@ public class FuzzMain {
         String filePath = null;
         Boolean colorStdOut = true;
         Boolean tooling = false;
+        Boolean group = false;
         for (int i = 0; i < args.length; i++) {
             String a = args[i];
             if (a.equals("--language") || a.equals("-l")) {
-                if (i + 1 < args.length) language = args[++i];
+                if (i + 1 < args.length)
+                    language = args[++i];
             } else if (a.startsWith("--language=")) {
                 language = a.substring("--language=".length());
             } else if (a.equals("--code") || a.equals("-c")) {
-                if (i + 1 < args.length) code = args[++i];
+                if (i + 1 < args.length)
+                    code = args[++i];
             } else if (a.startsWith("--code=")) {
                 code = a.substring("--code=".length());
             } else if (a.equals("--file") || a.equals("-f")) {
-                if (i + 1 < args.length) filePath = args[++i];
+                if (i + 1 < args.length)
+                    filePath = args[++i];
             } else if (a.startsWith("--file=")) {
                 filePath = a.substring("--file=".length());
             } else if (a.equals("--no-color")) {
                 colorStdOut = false;
             } else if (a.equals("--tooling")) {
                 tooling = true;
+            } else if (a.equals("--group")) {
+                group = true;
             }
         }
 
@@ -59,7 +71,8 @@ public class FuzzMain {
         System.err.println();
 
         if (instrument == null) {
-            throw new IllegalStateException("CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
+            throw new IllegalStateException(
+                    "CoverageInstrument not found. Ensure it's on the classpath and correctly registered.");
         }
 
         // Build source
@@ -102,31 +115,43 @@ public class FuzzMain {
             return;
         }
 
+        // Output
+        ResultLogger logger;
+        if (tooling) {
+            logger = new JsonLogger();
+        } else {
+            logger = new ConsoleLogger(colorStdOut);
+        }
+
         // Fuzzing loop
         var pool = new Pool();
         var random = new Random();
-        var gson = GsonConfig.createGson();
-        
-        for (int i = 0; i < 1000; i++) {
-            if (!tooling) {
-                System.out.print("New run. ");
-            }
+        List<Runner.RunResult> allResults = new ArrayList<>();
 
+        for (int i = 0; i < 1000; i++) {
             var trace = pool.createNewTrace();
             instrument.coverage = new Coverage();
             var result = Runner.run(function, trace, random);
             var deduplicatedResult = result.withDeduplicatedTrace();
 
-            if (tooling) {
-                System.out.println(gson.toJson(deduplicatedResult));
-            } else {
-                System.out.print(String.format("%-20s", Value.format(deduplicatedResult.getInput(), deduplicatedResult.getUniverse())));
-                System.out.println("  Trace: " + deduplicatedResult.getTrace().toString(colorStdOut));
-            }
-
             // Add the entropy and its results to the pool for future selection
             pool.add(result.getTrace(), instrument.coverage);
+            allResults.add(deduplicatedResult);
+
+            logger.logRun(deduplicatedResult);
         }
+
+        // Analysis
+        GroupingStrategy groupingStrategy;
+        if (group) {
+            groupingStrategy = new GroupingStrategy.CompositeAllGroups();
+        } else {
+            groupingStrategy = new GroupingStrategy.NoGroups();
+        }
+        var analysis = new AnalysisEngine();
+        List<ResultGroup> groups = analysis.analyze(allResults, pool, groupingStrategy);
+
+        logger.logAnalysis(groups);
     }
 
     public static void printException(Exception e) {

@@ -34,7 +34,7 @@ public class Pool {
         // Use deduplicated trace as key for consistent hashing
         Trace keyTrace = trace.deduplicate();
         PoolEntry newEntry = new PoolEntry(keyTrace, coverage);
-        
+
         // Only add or replace if new entry has better quality
         PoolEntry existing = entries.get(keyTrace);
         if (existing == null || newEntry.quality > existing.quality) {

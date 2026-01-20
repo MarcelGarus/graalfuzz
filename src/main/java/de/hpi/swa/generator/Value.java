@@ -14,6 +14,20 @@ public sealed interface Value {
         public String toString() {
             return "$" + value;
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj)
+                return true;
+            if (!(obj instanceof ObjectId other))
+                return false;
+            return this.value == other.value;
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.hashCode(value);
+        }
     }
 
     record Null() implements Value {
