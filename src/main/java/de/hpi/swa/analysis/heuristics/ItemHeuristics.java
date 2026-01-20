@@ -46,14 +46,14 @@ public class ItemHeuristics {
                 case Value.Null n -> 0.0;
                 case Value.Boolean b -> 0.0;
                 case Value.Int num -> {
-                    int absValue = Math.abs(num.value());
+                    int absValue = Math.max(Math.abs(num.value()), 1);
                     // Avoid log10(0) which returns -Infinity
-                    yield absValue == 0 ? 0.0 : Math.log10(absValue);
+                    yield Math.log10(absValue);
                 }
                 case Value.Double num -> {
-                    double absValue = Math.abs(num.value());
+                    double absValue = Math.max(Math.abs(num.value()), 1.0);
                     // Avoid log10(0) which returns -Infinity, and handle very small numbers
-                    yield absValue == 0.0 ? 0.0 : Math.log10(absValue);
+                    yield Math.log10(absValue);
                 }
                 case Value.StringValue s -> (double) s.value().length();
                 case Value.ObjectValue objVal -> {
