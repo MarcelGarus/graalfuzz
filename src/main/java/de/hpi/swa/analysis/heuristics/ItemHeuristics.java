@@ -46,13 +46,14 @@ public class ItemHeuristics {
                 case Value.Null n -> 0.0;
                 case Value.Boolean b -> 0.0;
                 case Value.Int num -> {
+                    // Avoid log10(0) which returns -Infinity and log10 of negative numbers is NaN
                     int absValue = Math.max(Math.abs(num.value()), 1);
-                    // Avoid log10(0) which returns -Infinity
                     yield Math.log10(absValue);
                 }
                 case Value.Double num -> {
+                    // Avoid log10(0) which returns -Infinity and log10 of negative numbers is NaN
+                    // and also for very small numbers
                     double absValue = Math.max(Math.abs(num.value()), 1.0);
-                    // Avoid log10(0) which returns -Infinity, and handle very small numbers
                     yield Math.log10(absValue);
                 }
                 case Value.StringValue s -> (double) s.value().length();
