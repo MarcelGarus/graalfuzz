@@ -15,11 +15,11 @@ public class Normalizer {
         /*
          * Problems:
          * - If max == min, all values are the same. We can return 1.0 in this case so
-         *   it is still multipliable by a factor.
+         * it is still multipliable by a factor.
          * 
          * - If new values outside the prepared range are given, normalization will
-         *   produce values < 0 or > 1.
-         *   For now we will not pass values after preparation that are outside the range.
+         * produce values < 0 or > 1.
+         * For now we will not pass values after preparation that are outside the range.
          */
         private double min;
         private double max;
