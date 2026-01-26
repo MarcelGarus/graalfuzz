@@ -143,7 +143,7 @@ public final class QueryCatalog {
         return NamedQuery.of("detailed", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE, ColumnDef.OUTPUT_TYPE, ColumnDef.TRACE, ColumnDef.EXCEPTION_TYPE)
                 .aggregations(countAgg, errorCountAgg)
-                .drill(new DrillSpec.All())
+                .drill(new DrillSpec.All(5))
                 .build());
     }
 

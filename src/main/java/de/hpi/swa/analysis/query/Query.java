@@ -40,7 +40,10 @@ public record Query(
         ProjectionSpec groupProjection,
 
         // 11. Scoring configuration for weighted heuristics
-        ScoringSpec scoringConfig) {
+        ScoringSpec scoringConfig,
+
+        // 12. Group limit (how many child groups to show per parent group)
+        GroupLimitSpec groupLimit) {
     public Query {
         columns = List.copyOf(columns);
         groupBy = List.copyOf(groupBy);
@@ -52,6 +55,7 @@ public record Query(
         groupSort = List.copyOf(groupSort);
         groupProjection = groupProjection == null ? new ProjectionSpec(List.of()) : groupProjection;
         scoringConfig = scoringConfig == null ? ScoringSpec.defaultConfig() : scoringConfig;
+        groupLimit = groupLimit == null ? new GroupLimitSpec.None() : groupLimit;
     }
 
     /* Convenience builders (minimal fluent help) */
@@ -67,10 +71,11 @@ public record Query(
         Optional<FilterSpec.GroupFilter> groupFilter = Optional.empty();
         List<SortSpec<?>> itemSort = new ArrayList<>();
         ProjectionSpec itemProjection = new ProjectionSpec(List.of());
-        DrillSpec drillSpec = new DrillSpec.LeafsOnly();
+        DrillSpec drillSpec = new DrillSpec.LeafsOnly(10);
         List<GroupSortSpec> groupSort = new ArrayList<>();
         ProjectionSpec groupProjection = new ProjectionSpec(List.of());
         ScoringSpec scoringConfig = null; // will use default
+        GroupLimitSpec groupLimit = null; // will use default
 
         public Builder columns(ColumnDef<?>... defs) {
             Collections.addAll(this.columns, defs);
@@ -144,6 +149,11 @@ public record Query(
             return this;
         }
 
+        public Builder groupLimit(GroupLimitSpec limit) {
+            this.groupLimit = limit;
+            return this;
+        }
+
         public Query build() {
             return new Query(
                     columns,
@@ -156,7 +166,8 @@ public record Query(
                     drillSpec,
                     groupSort,
                     groupProjection,
-                    scoringConfig);
+                    scoringConfig,
+                    groupLimit);
         }
     }
 }

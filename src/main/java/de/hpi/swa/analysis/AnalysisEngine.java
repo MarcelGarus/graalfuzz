@@ -91,6 +91,8 @@ public class AnalysisEngine {
             Sorter.sortGroups(root, query.groupSort());
         }
 
+        GroupLimiter.applyGroupLimit(root, query.groupLimit());
+
         DrillProcessor.applyDrillSpec(root, query.drillSpec());
 
         Projector.materializeProjections(root, query.groupProjection(), query.itemProjection(), materializer);

@@ -25,56 +25,35 @@ public final class DrillProcessor {
                 });
             }
             case DrillSpec.All(int topN) -> {
-                // Propagate results from children to parents, maintaining sort order
-                // Use topN during propagation for efficiency
                 propagateResultsToParentsSorted(node, topN);
             }
         }
     }
 
-    /**
-     * Propagates results from children to parents while maintaining sorted order.
-     * Uses a merge strategy that takes top N from each child (already sorted),
-     * then merges them in order. This is efficient because we only need topN
-     * results.
-     */
     private static void propagateResultsToParentsSorted(ResultGroup<?, ?> node, int topN) {
-        // First, recursively process all children so they have their results ready
         for (var child : node.children().values()) {
             propagateResultsToParentsSorted(child, topN);
         }
 
         if (!node.isLeaf()) {
-            // Merge children's sorted results maintaining order
-            // Each child already has at most topN sorted results
             List<RunResult> merged = mergeSortedChildResults(node, topN);
             node.results().clear();
             node.results().addAll(merged);
         } else {
-            // Leaf nodes: just limit to topN (already sorted)
             limitResults(node, topN);
         }
     }
 
-    /**
-     * Merges sorted results from children, taking top N overall.
-     * Assumes children's results are already sorted by the same criteria.
-     * Uses a simple merge approach that preserves relative order from sorted
-     * children.
-     */
     private static List<RunResult> mergeSortedChildResults(ResultGroup<?, ?> node, int topN) {
         List<RunResult> merged = new ArrayList<>();
-        Set<RunResult> seen = new HashSet<>(); // For deduplication
+        Set<RunResult> seen = new HashSet<>();
 
-        // Add any existing results in the node itself first (preserves original order)
         for (RunResult r : node.results()) {
             if (seen.add(r)) {
                 merged.add(r);
             }
         }
 
-        // Interleave from children to maintain balanced sampling
-        // This approach takes results round-robin from children to get diversity
         List<List<RunResult>> childResults = new ArrayList<>();
         for (var child : node.children().values()) {
             if (!child.results().isEmpty()) {
@@ -86,7 +65,6 @@ public final class DrillProcessor {
             return limitList(merged, topN);
         }
 
-        // Round-robin merge: take one from each child in turn until we have enough
         int[] indices = new int[childResults.size()];
         boolean hasMore = true;
         while (merged.size() < topN && hasMore) {
@@ -108,14 +86,17 @@ public final class DrillProcessor {
     }
 
     private static List<RunResult> limitList(List<RunResult> list, int limit) {
-        if (list.size() <= limit) {
+        if (limit == -1 || list.size() <= limit) {
             return list;
         }
         return new ArrayList<>(list.subList(0, limit));
     }
 
     private static void limitResults(ResultGroup<?, ?> group, int limit) {
-        // Make a copy since topResults returns a sublist view backed by the same list
+        if (limit == -1) {
+            return;
+        }
+
         List<RunResult> kept = new ArrayList<>(group.topResults(limit));
         group.results().clear();
         group.results().addAll(kept);
