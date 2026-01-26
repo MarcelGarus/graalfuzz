@@ -12,8 +12,8 @@ public final class QueryCatalog {
 
     static {
         register(relevantPairs());
-        register(treeMap());
-        register(inverseTreeMap());
+        register(treeList());
+        register(inverseTreeList());
         register(observedOutputTypes());
         register(inputTypesToOutputTypes());
         register(inputShapesToOutputTypes());
@@ -44,7 +44,7 @@ public final class QueryCatalog {
                 .build());
     }
 
-    public static NamedQuery treeMap() {
+    public static NamedQuery treeList() {
         var countAgg = AggregationSpec.count(ColumnDef.INPUT_SHAPE, "Count");
         var crashCountAgg = AggregationSpec.<Boolean>countIf(ColumnDef.IS_CRASH, "CrashCount", b -> b);
 
@@ -58,7 +58,7 @@ public final class QueryCatalog {
                     return !count.equals(crashCount);
                 });
 
-        return NamedQuery.of("treeMap", Query.builder()
+        return NamedQuery.of("treeList", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE, ColumnDef.OUTPUT_TYPE)
                 .aggregations(countAgg, crashCountAgg)
                 .groupFilter(notAllCrashesFilter)
@@ -68,14 +68,14 @@ public final class QueryCatalog {
                 .build());
     }
 
-    public static NamedQuery inverseTreeMap() {
+    public static NamedQuery inverseTreeList() {
         var countAgg = AggregationSpec.count(ColumnDef.OUTPUT_TYPE, "Count");
         var inputShapesAgg = AggregationSpec.distinctSet(ColumnDef.INPUT_SHAPE, "InputShapes");
 
         var minimalInputSort = new SortSpec<>(RowHeuristics.MINIMAL_INPUT, false);
         var groupScoreSort = new GroupSortSpec(Scorer.GROUP_SCORE_AGG, false);
 
-        return NamedQuery.of("inverseTreeMap", Query.builder()
+        return NamedQuery.of("inverseTreeList", Query.builder()
                 .groupBy(ColumnDef.OUTPUT_TYPE, ColumnDef.INPUT_SHAPE)
                 .aggregations(countAgg, inputShapesAgg)
                 .itemSort(minimalInputSort)
