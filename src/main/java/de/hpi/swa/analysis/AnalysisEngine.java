@@ -68,6 +68,10 @@ public class AnalysisEngine {
                     .collect(Collectors.toList());
         }
 
+        if (!query.deduplicateBy().isEmpty()) {
+            filteredResults = Deduplicator.deduplicateResults(filteredResults, query.deduplicateBy(), materializer);
+        }
+
         ResultGroup<Void, Void> root = Grouping.GroupBuilder.buildTree(
                 filteredResults,
                 query.groupBy(),

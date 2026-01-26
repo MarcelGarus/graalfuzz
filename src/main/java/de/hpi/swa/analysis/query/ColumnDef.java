@@ -10,6 +10,7 @@ import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Runner;
 import de.hpi.swa.generator.Shape;
 import de.hpi.swa.generator.Trace;
+import de.hpi.swa.generator.Value;
 import de.hpi.swa.generator.Runner.RunResult;
 
 public sealed interface ColumnDef<T> {
@@ -151,6 +152,9 @@ public sealed interface ColumnDef<T> {
 
         public abstract T compute(RunResult row);
     }
+
+    static ColumnDef<Value> INPUT_VALUE = new Base<>(ColumnId.of("InputValue"),
+            rr -> rr.input());
 
     static ColumnDef<Shape> INPUT_SHAPE = new Base<>(ColumnId.of("InputShape"),
             rr -> Shape.fromValue(rr.input(), rr.universe()));

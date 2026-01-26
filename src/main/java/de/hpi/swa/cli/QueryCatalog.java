@@ -33,6 +33,7 @@ public final class QueryCatalog {
         return NamedQuery.of("relevantPairs", Query.builder()
                 .groupByComposite(ColumnDef.INPUT_SHAPE, ColumnDef.COVERAGE_PATH, ColumnDef.OUTPUT_SHAPE,
                         ColumnDef.EXCEPTION_TYPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, crashCountAgg)
                 .groupFilter(FilterSpec.GroupFilter.or(
                         FilterSpec.GroupFilter.predicate("CrashCount", c -> c == null || ((Integer) c) == 0),
@@ -60,6 +61,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("treeList", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE, ColumnDef.OUTPUT_TYPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, crashCountAgg)
                 .groupFilter(notAllCrashesFilter)
                 .itemSort(minimalInputSort)
@@ -77,6 +79,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("inverseTreeList", Query.builder()
                 .groupBy(ColumnDef.OUTPUT_TYPE, ColumnDef.INPUT_SHAPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, inputShapesAgg)
                 .itemSort(minimalInputSort)
                 .groupSort(groupScoreSort)
@@ -91,6 +94,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("observedOutputTypes", Query.builder()
                 .groupBy(ColumnDef.OUTPUT_TYPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, inputTypesAgg, inputTypeCountAgg)
                 .groupSortByAggregation("Count", false)
                 .drill(new DrillSpec.LeafsOnly(5))
@@ -104,6 +108,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("inputTypesToOutputTypes", Query.builder()
                 .groupBy(ColumnDef.INPUT_TYPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, outputTypesAgg, outputTypeCountAgg)
                 .groupSortByAggregation("Count", false)
                 .drill(new DrillSpec.LeafsOnly(5))
@@ -119,6 +124,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("inputShapesToOutputTypes", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, outputTypesAgg, outputTypeCountAgg)
                 .groupSort(groupScoreSort)
                 .drill(new DrillSpec.LeafsOnly(5))
@@ -131,6 +137,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("basic", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, errorCountAgg)
                 .drill(new DrillSpec.None())
                 .build());
@@ -142,6 +149,7 @@ public final class QueryCatalog {
 
         return NamedQuery.of("detailed", Query.builder()
                 .groupBy(ColumnDef.INPUT_SHAPE, ColumnDef.OUTPUT_TYPE, ColumnDef.TRACE, ColumnDef.EXCEPTION_TYPE)
+                .deduplicateBy(ColumnDef.INPUT_VALUE)
                 .aggregations(countAgg, errorCountAgg)
                 .drill(new DrillSpec.All(5))
                 .build());

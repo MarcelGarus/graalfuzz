@@ -18,36 +18,40 @@ public record Query(
         // 3. Filtering Items (runs)
         Optional<FilterSpec.RowFilter> itemFilter,
 
-        // 4. Aggregations to compute for each group
+        // 4. Deduplication (remove duplicate rows by column)
+        List<ColumnDef<?>> deduplicateBy,
+
+        // 5. Aggregations to compute for each group
         List<AggregationSpec<?, ?>> aggregations,
 
-        // 5. Filtering Groups (applied after aggregations)
+        // 6. Filtering Groups (applied after aggregations)
         Optional<FilterSpec.GroupFilter> groupFilter,
 
-        // 6. Sorting Items (within each group)
+        // 7. Sorting Items (within each group)
         List<SortSpec<?>> itemSort,
 
-        // 7. Projection of item columns (rows)
+        // 8. Projection of item columns (rows)
         ProjectionSpec itemProjection,
 
-        // 8. Drill-through control (how many results per group to show)
+        // 9. Drill-through control (how many results per group to show)
         DrillSpec drillSpec,
 
-        // 9. Sorting Groups (by aggregation values or group score)
+        // 10. Sorting Groups (by aggregation values or group score)
         List<GroupSortSpec> groupSort,
 
-        // 10. Projection of group columns
+        // 11. Projection of group columns
         ProjectionSpec groupProjection,
 
-        // 11. Scoring configuration for weighted heuristics
+        // 12. Scoring configuration for weighted heuristics
         ScoringSpec scoringConfig,
 
-        // 12. Group limit (how many child groups to show per parent group)
+        // 13. Group limit (how many child groups to show per parent group)
         GroupLimitSpec groupLimit) {
     public Query {
         columns = List.copyOf(columns);
         groupBy = List.copyOf(groupBy);
         itemFilter = Objects.requireNonNull(itemFilter);
+        deduplicateBy = List.copyOf(deduplicateBy);
         aggregations = List.copyOf(aggregations);
         groupFilter = Objects.requireNonNull(groupFilter);
         itemSort = List.copyOf(itemSort);
@@ -67,6 +71,7 @@ public record Query(
         List<ColumnDef<?>> columns = new ArrayList<>();
         List<GroupingSpec> groupByList = new ArrayList<>();
         Optional<FilterSpec.RowFilter> itemFilter = Optional.empty();
+        List<ColumnDef<?>> deduplicateBy = new ArrayList<>();
         List<AggregationSpec<?, ?>> aggs = new ArrayList<>();
         Optional<FilterSpec.GroupFilter> groupFilter = Optional.empty();
         List<SortSpec<?>> itemSort = new ArrayList<>();
@@ -101,6 +106,11 @@ public record Query(
 
         public Builder itemFilter(FilterSpec.RowFilter e) {
             this.itemFilter = Optional.of(e);
+            return this;
+        }
+
+        public Builder deduplicateBy(ColumnDef<?>... cols) {
+            Collections.addAll(this.deduplicateBy, cols);
             return this;
         }
 
@@ -159,6 +169,7 @@ public record Query(
                     columns,
                     groupByList,
                     itemFilter,
+                    deduplicateBy,
                     aggs,
                     groupFilter,
                     itemSort,
