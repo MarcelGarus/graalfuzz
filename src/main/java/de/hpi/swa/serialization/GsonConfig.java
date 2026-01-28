@@ -3,6 +3,8 @@ package de.hpi.swa.serialization;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
+import de.hpi.swa.analysis.query.Shape;
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.generator.Trace;
 import de.hpi.swa.generator.Value;
@@ -21,6 +23,8 @@ public class GsonConfig {
                 .registerTypeAdapter(Runner.RunResult.class, new RunResultAdapter())
                 .registerTypeAdapter(Trace.TraceEntry.class, new TraceEntryAdapter())
                 .registerTypeAdapter(Value.class, new ValueAdapter())
+                .registerTypeAdapter(Shape.class, new ShapeAdapter())
+                .registerTypeAdapter(GroupKey.class, new GroupKeyAdapter())
                 .registerTypeAdapter(Coverage.class, new CoverageAdapter());
     }
 }

@@ -1,5 +1,6 @@
 package de.hpi.swa.analysis.operations;
 
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
 import de.hpi.swa.analysis.query.FilterSpec;
 
@@ -9,13 +10,13 @@ import java.util.Map;
 
 public final class Filterer {
 
-    public static <T> void filterGroups(ResultGroup<T, ?> node, FilterSpec.GroupFilter filter,
+    public static <K extends GroupKey> void filterGroups(ResultGroup<K, ?> node, FilterSpec.GroupFilter filter,
             Materializer materializer) {
-        List<T> keys = new ArrayList<>(getChildKeys(node));
-        List<T> toRemove = new ArrayList<>();
+        List<K> keys = new ArrayList<>(getChildKeys(node));
+        List<K> toRemove = new ArrayList<>();
 
-        for (T key : keys) {
-            ResultGroup<?, T> child = getChild(node, key);
+        for (K key : keys) {
+            ResultGroup<?, K> child = getChild(node, key);
             if (child != null) {
                 filterGroups(child, filter, materializer);
 
@@ -25,19 +26,19 @@ public final class Filterer {
             }
         }
 
-        Map<T, ResultGroup<?, T>> rawChildren = node.children();
-        for (T key : toRemove) {
+        Map<K, ResultGroup<?, K>> rawChildren = node.children();
+        for (K key : toRemove) {
             rawChildren.remove(key);
         }
     }
 
-    private static <T> List<T> getChildKeys(ResultGroup<T, ?> node) {
-        Map<T, ResultGroup<?, T>> rawChildren = node.children();
+    private static <K extends GroupKey> List<K> getChildKeys(ResultGroup<K, ?> node) {
+        Map<K, ResultGroup<?, K>> rawChildren = node.children();
         return new ArrayList<>(rawChildren.keySet());
     }
 
-    private static <T> ResultGroup<?, T> getChild(ResultGroup<T, ?> node, T key) {
-        Map<T, ResultGroup<?, T>> rawChildren = node.children();
+    private static <K extends GroupKey> ResultGroup<?, K> getChild(ResultGroup<K, ?> node, K key) {
+        Map<K, ResultGroup<?, K>> rawChildren = node.children();
         return rawChildren.get(key);
     }
 }

@@ -1,15 +1,21 @@
 package de.hpi.swa.cli.logger;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import de.hpi.swa.analysis.AnalysisEngine.MultiQueryResult;
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
 import de.hpi.swa.analysis.query.ColumnDef;
 import de.hpi.swa.analysis.query.GroupingSpec;
+import de.hpi.swa.analysis.query.Shape;
 import de.hpi.swa.generator.Runner.RunResult;
 import de.hpi.swa.serialization.GsonConfig;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +37,7 @@ public class JsonLogger implements ResultLogger {
         var output = Map.of(
                 "type", "analysis",
                 "query", queryName,
-                "groups", convertGroup(rootGroup));
+                "root", convertGroup(rootGroup));
 
         System.out.println(gson.toJson(output));
     }
@@ -42,7 +48,7 @@ public class JsonLogger implements ResultLogger {
             var output = Map.of(
                     "type", "analysis",
                     "query", queryName,
-                    "groups", convertGroup(multiResult.get(queryName)));
+                    "root", convertGroup(multiResult.get(queryName)));
 
             System.out.println(gson.toJson(output));
         }
@@ -53,10 +59,11 @@ public class JsonLogger implements ResultLogger {
 
         if (group.groupingSpec() != null) {
             result.put("column", formatGroupingSpec(group.groupingSpec()));
-            result.put("key", String.valueOf(group.groupKey()));
+            result.put("key", gson.toJsonTree(group.groupKey(), GroupKey.class));
         }
 
-        result.put("aggregations", group.aggregations());
+        // Serialize aggregations with proper type handling for Shapes in collections
+        result.put("aggregations", serializeAggregations(group.aggregations()));
 
         if (!group.projectedGroupData().isEmpty()) {
             Map<String, Object> projectedGroup = new LinkedHashMap<>();
@@ -78,13 +85,9 @@ public class JsonLogger implements ResultLogger {
         if (!results.isEmpty()) {
             result.put("sampleCount", results.size());
 
-            List<Map<String, Object>> samples = new ArrayList<>();
+            List<JsonObject> samples = new ArrayList<>();
             for (RunResult r : results) {
-                Map<String, Object> sampleMap = new LinkedHashMap<>();
-
-                sampleMap.put("input", r.getInput());
-                sampleMap.put("output", r.getOutput());
-                sampleMap.put("trace", r.getTrace());
+                var jsonElement = gson.toJsonTree(r);
 
                 Map<ColumnDef<?>, Object> projectedRow = group.projectedRowData().get(r);
                 if (projectedRow != null && !projectedRow.isEmpty()) {
@@ -92,10 +95,10 @@ public class JsonLogger implements ResultLogger {
                     for (var entry : projectedRow.entrySet()) {
                         projectedData.put(entry.getKey().name(), entry.getValue());
                     }
-                    sampleMap.put("projected", projectedData);
+                    jsonElement.getAsJsonObject().add("projected", gson.toJsonTree(projectedData));
                 }
 
-                samples.add(sampleMap);
+                samples.add(jsonElement.getAsJsonObject());
             }
             result.put("samples", samples);
         }
@@ -110,6 +113,44 @@ public class JsonLogger implements ResultLogger {
                     .map(col -> col.name())
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
+            case GroupingSpec.Hierarchical h -> h.columns().stream()
+                    .map(col -> col.name())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
         };
+    }
+
+    /**
+     * Serializes aggregations map with proper type handling for Shapes in
+     * collections.
+     * This is needed because Gson doesn't use custom adapters for elements within
+     * untyped collections.
+     */
+    private JsonElement serializeAggregations(Map<String, Object> aggregations) {
+        JsonObject result = new JsonObject();
+        for (Map.Entry<String, Object> entry : aggregations.entrySet()) {
+            result.add(entry.getKey(), serializeAggregationValue(entry.getValue()));
+        }
+        return result;
+    }
+
+    private JsonElement serializeAggregationValue(Object value) {
+        if (value instanceof Shape shape) {
+            return gson.toJsonTree(shape, Shape.class);
+        } else if (value instanceof Collection<?> collection) {
+            JsonArray array = new JsonArray();
+            for (Object element : collection) {
+                array.add(serializeAggregationValue(element));
+            }
+            return array;
+        } else if (value instanceof Map<?, ?> map) {
+            JsonObject obj = new JsonObject();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                obj.add(String.valueOf(entry.getKey()), serializeAggregationValue(entry.getValue()));
+            }
+            return obj;
+        } else {
+            return gson.toJsonTree(value);
+        }
     }
 }

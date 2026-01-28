@@ -30,6 +30,7 @@ public class FuzzMain {
         String language = "python";
         String code = null;
         String filePath = null;
+        String functionName = null; // Optional function name to fuzz
         Boolean colorStdOut = true;
         Boolean tooling = false;
         List<String> queryNames = new ArrayList<>();
@@ -52,6 +53,11 @@ public class FuzzMain {
                     filePath = args[++i];
             } else if (a.startsWith("--file=")) {
                 filePath = a.substring("--file=".length());
+            } else if (a.equals("--function") || a.equals("-fn")) {
+                if (i + 1 < args.length)
+                    functionName = args[++i];
+            } else if (a.startsWith("--function=")) {
+                functionName = a.substring("--function=".length());
             } else if (a.equals("--no-color")) {
                 colorStdOut = false;
             } else if (a.equals("--tooling")) {
@@ -80,9 +86,6 @@ public class FuzzMain {
         }
 
         System.err.println("Welcome to the Fuzzer!");
-        if (queryNames.isEmpty()) {
-            queryNames.add("detailed");
-        }
 
         var engine = Engine.newBuilder().option(CoverageInstrument.ID, "true").build();
         var context = Context.newBuilder().engine(engine).allowAllAccess(true).build();
@@ -110,6 +113,11 @@ public class FuzzMain {
                 source = org.graalvm.polyglot.Source.newBuilder(language, code, "cli-inline").build();
             } else if (filePath != null) {
                 var file = new File(filePath);
+                if (filePath.endsWith(".py")) {
+                    language = "python";
+                } else if (filePath.endsWith(".js")) {
+                    language = "js";
+                }
                 System.err.println("Using " + language + " file: " + file.getPath());
                 source = org.graalvm.polyglot.Source.newBuilder(language, file).build();
             } else {
@@ -120,24 +128,44 @@ public class FuzzMain {
         } catch (IOException e) {
             System.err.println("Could not read file or build source.");
             e.printStackTrace();
+            System.exit(1);
             return;
         }
 
         System.err.println("Running " + iterations + " iterations.\n");
 
-        org.graalvm.polyglot.Value function;
+        org.graalvm.polyglot.Value evalResult;
         try {
-            function = context.eval(source);
+            evalResult = context.eval(source);
         } catch (PolyglotException e) {
             System.err.println("Error during execution:");
             FuzzMain.printException(e);
+            System.exit(1);
             return;
         }
 
-        if (function.isNull()) {
-            System.err.println("Returning because the code didn't evaluate to a function:");
-            System.err.println(function);
-            return;
+        // Determine the function to fuzz
+        org.graalvm.polyglot.Value function;
+        if (functionName != null && !functionName.isEmpty()) {
+            var bindings = context.getBindings(language);
+            if (!bindings.hasMember(functionName)) {
+                System.err.println("Function '" + functionName + "' not found in " + language + " bindings.");
+                System.err.println("Available members: " + bindings.getMemberKeys());
+                System.exit(1);
+            }
+            function = bindings.getMember(functionName);
+            if (!function.canExecute()) {
+                System.err.println("'" + functionName + "' is not callable.");
+                System.exit(1);
+            }
+            System.err.println("Fuzzing function: " + functionName);
+        } else {
+            function = evalResult;
+            if (function.isNull() || !function.canExecute()) {
+                System.err.println("Returning because the code didn't evaluate to a function:");
+                System.err.println(function);
+                System.exit(1);
+            }
         }
 
         // Output
@@ -166,11 +194,21 @@ public class FuzzMain {
             logger.logRun(deduplicatedResult);
         }
 
+        if (queryNames.isEmpty()) {
+            System.err.println("No queries specified, skipping analysis phase.");
+            return;
+        }
+
         List<NamedQuery> queries = QueryCatalog.getByNames(queryNames);
         if (queries.isEmpty()) {
             System.err.println("Warning: No valid queries found for names: " + queryNames);
             System.err.println("Available queries: " + QueryCatalog.getAvailableNames());
             return;
+        }
+
+        if (queries.size() != queryNames.size()) {
+            System.err.println("Note: Some queries were not found. Requested: " + queryNames + ", Found: " +
+                    queries.stream().map(NamedQuery::name).toList());
         }
 
         System.err.println("Running " + queries.size() + " queries: " +
@@ -196,6 +234,7 @@ public class FuzzMain {
         System.out.println("  -l, --language=LANG    Target language (default: python)");
         System.out.println("  -f, --file=PATH        Path to source file");
         System.out.println("  -c, --code=CODE        Inline code to fuzz");
+        System.out.println("  -fn, --function=NAME   Function name to fuzz (looks up from bindings)");
         System.out.println("  -q, --query=NAMES      Comma-separated query names (default: detailed)");
         System.out.println("  -n, --iterations=N     Number of fuzzing iterations (default: 1000)");
         System.out.println("  --tooling              Enable JSON output for tooling");

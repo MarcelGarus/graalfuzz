@@ -3,6 +3,7 @@ package de.hpi.swa.analysis.operations;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
 import de.hpi.swa.analysis.query.ColumnDef;
 import de.hpi.swa.analysis.query.ProjectionSpec;
+import de.hpi.swa.analysis.query.ColumnDef.AggregationRef;
 import de.hpi.swa.generator.Runner.RunResult;
 
 import java.util.LinkedHashMap;
@@ -42,11 +43,13 @@ public final class Projector {
             return allKeys.get(col);
         }
 
-        if (group.aggregations().containsKey(col.name())) {
+        if (col instanceof AggregationRef<?> && group.aggregations().containsKey(col.name())) {
             return group.aggregations().get(col.name());
         }
 
         if (!group.results().isEmpty()) {
+            // Only in this case it is possible that some rows in this group may have a
+            // different value for this column
             return materializer.materialize(group.results().get(0), col);
         }
 

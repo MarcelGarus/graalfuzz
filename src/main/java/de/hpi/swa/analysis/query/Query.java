@@ -12,7 +12,8 @@ public record Query(
 
         // 2. Grouping specifications (ordered, first = top-level)
         // Each GroupingSpec can be a single column or composite (multiple columns =
-        // flat key)
+        // flat key). In case of hierarchical grouping, there must be exactly one
+        // GroupingSpec of type Hierarchical.
         List<GroupingSpec> groupBy,
 
         // 3. Filtering Items (runs)
@@ -50,16 +51,57 @@ public record Query(
     public Query {
         columns = List.copyOf(columns);
         groupBy = List.copyOf(groupBy);
+
+        long hierarchicalCount = groupBy.stream()
+                .filter(spec -> spec instanceof GroupingSpec.Hierarchical)
+                .count();
+        if (hierarchicalCount > 1) {
+            throw new IllegalArgumentException(
+                    "Only one Hierarchical grouping spec is allowed per query. " +
+                            "Use multiple levels within a single Hierarchical spec instead.");
+        }
+        if (hierarchicalCount == 1 && groupBy.size() > 1) {
+            throw new IllegalArgumentException(
+                    "When using Hierarchical grouping, it must be the only groupBy spec. " +
+                            "Found " + groupBy.size() + " groupBy specs.");
+        }
+
         itemFilter = Objects.requireNonNull(itemFilter);
+        for (var c : deduplicateBy) {
+            if (c instanceof ColumnDef.AggregationRef) {
+                throw new IllegalArgumentException("AggregationRef cannot be used in deduplicateBy");
+            }
+        }
         deduplicateBy = List.copyOf(deduplicateBy);
         aggregations = List.copyOf(aggregations);
         groupFilter = Objects.requireNonNull(groupFilter);
+        for (SortSpec<?> spec : itemSort) {
+            if (spec.column() instanceof ColumnDef.AggregationRef) {
+                throw new IllegalArgumentException("AggregationRef cannot be used in itemSort");
+            }
+        }
         itemSort = List.copyOf(itemSort);
         itemProjection = itemProjection == null ? new ProjectionSpec(List.of()) : itemProjection;
+        for (var c : itemProjection.selectedColumns()) {
+            if (c instanceof ColumnDef.AggregationRef) {
+                throw new IllegalArgumentException("AggregationRef cannot be used in itemProjection");
+            }
+        }
         groupSort = List.copyOf(groupSort);
         groupProjection = groupProjection == null ? new ProjectionSpec(List.of()) : groupProjection;
         scoringConfig = scoringConfig == null ? ScoringSpec.defaultConfig() : scoringConfig;
         groupLimit = groupLimit == null ? new GroupLimitSpec.None() : groupLimit;
+    }
+
+    public boolean hasHierarchicalGrouping() {
+        return groupBy.stream().anyMatch(spec -> spec instanceof GroupingSpec.Hierarchical);
+    }
+
+    public Optional<GroupingSpec.Hierarchical> getHierarchicalGrouping() {
+        return groupBy.stream()
+                .filter(spec -> spec instanceof GroupingSpec.Hierarchical)
+                .map(spec -> (GroupingSpec.Hierarchical) spec)
+                .findFirst();
     }
 
     /* Convenience builders (minimal fluent help) */
@@ -110,6 +152,12 @@ public record Query(
         }
 
         public Builder deduplicateBy(ColumnDef<?>... cols) {
+            for (var c : cols) {
+                if (c instanceof ColumnDef.AggregationRef) {
+                    throw new IllegalArgumentException("AggregationRef cannot be used in deduplicateBy");
+                }
+            }
+
             Collections.addAll(this.deduplicateBy, cols);
             return this;
         }
@@ -125,11 +173,23 @@ public record Query(
         }
 
         public Builder itemSort(SortSpec<?>... s) {
+            for (SortSpec<?> spec : s) {
+                if (spec.column() instanceof ColumnDef.AggregationRef) {
+                    throw new IllegalArgumentException("AggregationRef cannot be used in itemSort");
+                }
+            }
+
             Collections.addAll(this.itemSort, s);
             return this;
         }
 
         public Builder itemProjection(ColumnDef<?>... cols) {
+            for (var c : cols) {
+                if (c instanceof ColumnDef.AggregationRef) {
+                    throw new IllegalArgumentException("AggregationRef cannot be used in itemProjection");
+                }
+            }
+
             this.itemProjection = new ProjectionSpec(List.of(cols));
             return this;
         }

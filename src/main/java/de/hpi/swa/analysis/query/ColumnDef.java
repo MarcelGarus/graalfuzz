@@ -8,7 +8,6 @@ import de.hpi.swa.analysis.operations.Materializer;
 import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Runner;
-import de.hpi.swa.generator.Shape;
 import de.hpi.swa.generator.Trace;
 import de.hpi.swa.generator.Value;
 import de.hpi.swa.generator.Runner.RunResult;
@@ -48,6 +47,11 @@ public sealed interface ColumnDef<T> {
             Objects.requireNonNull(id);
             Objects.requireNonNull(extractor);
         }
+
+        @Override
+        public String toString() {
+            return "BaseColumnDef(" + name() + ")";
+        }
     }
 
     /**
@@ -63,6 +67,11 @@ public sealed interface ColumnDef<T> {
             Objects.requireNonNull(keySource);
             Objects.requireNonNull(compute);
         }
+
+        @Override
+        public String toString() {
+            return "KeyComputedDef(" + name() + ")";
+        }
     }
 
     /**
@@ -75,6 +84,11 @@ public sealed interface ColumnDef<T> {
         public RowComputed {
             Objects.requireNonNull(id);
             Objects.requireNonNull(compute);
+        }
+
+        @Override
+        public String toString() {
+            return "RowComputedDef(" + name() + ")";
         }
     }
 
@@ -117,6 +131,11 @@ public sealed interface ColumnDef<T> {
         protected abstract void doPrepare(List<RunResult> results, Pool pool, Materializer materializer);
 
         public abstract T compute(K keyValue);
+
+        @Override
+        public String toString() {
+            return "PreparableKeyColumnDef(" + name() + ")";
+        }
     }
 
     /**
@@ -151,10 +170,17 @@ public sealed interface ColumnDef<T> {
         protected abstract void doPrepare(List<RunResult> results, Pool pool, Materializer materializer);
 
         public abstract T compute(RunResult row);
+
+        @Override
+        public String toString() {
+            return "PreparableRowColumnDef(" + name() + ")";
+        }
     }
 
-    static ColumnDef<Value> INPUT_VALUE = new Base<>(ColumnId.of("InputValue"),
-            rr -> rr.input());
+    // If we used the Value directly, it would break for ObjectId because only the
+    // universe makes them the actual value...
+    static ColumnDef<String> INPUT_VALUE = new Base<>(ColumnId.of("InputValueString"),
+            rr -> Value.format(rr.input(), rr.universe()));
 
     static ColumnDef<Shape> INPUT_SHAPE = new Base<>(ColumnId.of("InputShape"),
             rr -> Shape.fromValue(rr.input(), rr.universe()));
@@ -169,10 +195,10 @@ public sealed interface ColumnDef<T> {
         case Runner.FunctionResult.Crash(var msg, var stackTrace) -> "Crash";
     });
 
-    static ColumnDef<String> OUTPUT_SHAPE = new Base<>(ColumnId.of("OutputShape"), rr -> switch (rr.output()) {
-        case Runner.FunctionResult.Normal(var typeName, var value) -> typeName;
-        case Runner.FunctionResult.Crash(var msg, var stackTrace) ->
-            "Crash:" + (msg != null ? msg.split(":")[0] : "Unknown");
+    static ColumnDef<String> OUTPUT_VALUE = new Base<>(ColumnId.of("OutputValue"), rr -> switch (rr.output()) {
+        case Runner.FunctionResult.Normal(var typeName, var value) ->
+            value != null ? value + " (" + typeName + ")" : "null (" + typeName + ")";
+        case Runner.FunctionResult.Crash(var msg, var stackTrace) -> msg != null ? msg : "Crash";
     });
 
     static ColumnDef<String> EXCEPTION_TYPE = new Base<>(ColumnId.of("ExceptionType"), rr -> switch (rr.output()) {
@@ -183,6 +209,22 @@ public sealed interface ColumnDef<T> {
 
     static ColumnDef<Boolean> IS_CRASH = new KeyComputed<>(ColumnId.of("IsCrash"), OUTPUT_TYPE,
             outputType -> outputType.equals("Crash"));
+
+    public final record AggregationRef<T>(ColumnId<T> id, String aggregationName) implements ColumnDef<T> {
+        public AggregationRef {
+            Objects.requireNonNull(id);
+            Objects.requireNonNull(aggregationName);
+        }
+
+        public static <T> AggregationRef<T> of(String aggregationName) {
+            return new AggregationRef<>(ColumnId.of(aggregationName), aggregationName);
+        }
+
+        @Override
+        public String name() {
+            return aggregationName;
+        }
+    }
 
     class CoveragePath extends PreparableKeyColumn<Trace, Coverage> {
         public static final ColumnId<Coverage> ID = ColumnId.of("CoveragePath");

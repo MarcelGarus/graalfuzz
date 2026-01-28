@@ -12,6 +12,16 @@ public record ScoringSpec(
     public static final String GROUP_SCORE_COLUMN = "GroupScore";
 
     public ScoringSpec {
+        for (var entry : heuristicWeights.entrySet()) {
+            if (entry.getKey() instanceof ColumnDef.AggregationRef) {
+                throw new IllegalArgumentException("AggregationRef cannot be used in ScoringSpec");
+            }
+
+            if (entry.getValue() < 0.0) {
+                throw new IllegalArgumentException("Heuristic weights must be non-negative");
+            }
+        }
+
         heuristicWeights = Map.copyOf(heuristicWeights);
     }
 

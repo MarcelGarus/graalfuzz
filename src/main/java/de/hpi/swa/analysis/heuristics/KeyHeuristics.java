@@ -2,11 +2,11 @@ package de.hpi.swa.analysis.heuristics;
 
 import de.hpi.swa.analysis.operations.Materializer;
 import de.hpi.swa.analysis.query.ColumnDef;
+import de.hpi.swa.analysis.query.Shape;
+import de.hpi.swa.coverage.Coverage;
 import de.hpi.swa.analysis.query.ColumnDef.PreparableKeyColumn;
 import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Runner.RunResult;
-import de.hpi.swa.generator.Shape;
-import de.hpi.swa.generator.Trace;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -188,33 +188,33 @@ public class KeyHeuristics {
      * Short paths are interesting because they indicate edge cases.
      * Score is normalized and inverted so shorter = higher score.
      */
-    public static class PathSimplicity extends PreparableKeyColumn<Trace, Double> {
+    public static class PathSimplicity extends PreparableKeyColumn<Coverage, Double> {
 
         public static final ColumnId<Double> ID = ColumnId.of("PathSimplicity");
 
         private final Normalizer.NormalizationStrategy normalizer = new Normalizer.MinMaxNormalization();
 
         public PathSimplicity() {
-            super(ID, ColumnDef.TRACE);
+            super(ID, ColumnDef.COVERAGE_PATH);
         }
 
         @Override
         protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             List<Double> pathLengths = new ArrayList<>();
             for (RunResult r : results) {
-                Trace trace = materializer.materialize(r, ColumnDef.TRACE);
-                pathLengths.add(calculateSimplicity(trace));
+                Coverage coverage = materializer.materialize(r, ColumnDef.COVERAGE_PATH);
+                pathLengths.add(calculateSimplicity(coverage));
             }
             normalizer.prepare(pathLengths);
         }
 
         @Override
-        public Double compute(Trace trace) {
-            return normalizer.normalize(calculateSimplicity(trace));
+        public Double compute(Coverage coverage) {
+            return normalizer.normalize(calculateSimplicity(coverage));
         }
 
-        private double calculateSimplicity(Trace trace) {
-            return -trace.entries.size();
+        private double calculateSimplicity(Coverage coverage) {
+            return -coverage.getCovered().size();
         }
     }
 
@@ -223,15 +223,15 @@ public class KeyHeuristics {
      * We uniformly debias over input shapes to remove fuzzer biasing certain
      * shapes.
      */
-    public static class CoverageRarity extends PreparableKeyColumn<Trace, Double> {
+    public static class CoverageRarity extends PreparableKeyColumn<Coverage, Double> {
 
         public static final ColumnId<Double> ID = ColumnId.of("CoverageRarity");
 
         private final Map<Shape, Integer> inputCounts = new HashMap<>();
-        private final Map<Trace, Map<Shape, Integer>> pathInputCounts = new HashMap<>();
+        private final Map<Coverage, Map<Shape, Integer>> pathInputCounts = new HashMap<>();
 
         public CoverageRarity() {
-            super(ID, ColumnDef.TRACE);
+            super(ID, ColumnDef.COVERAGE_PATH);
         }
 
         @Override
@@ -241,19 +241,19 @@ public class KeyHeuristics {
 
             for (RunResult r : results) {
                 Shape inputShape = materializer.materialize(r, ColumnDef.INPUT_SHAPE);
-                Trace trace = materializer.materialize(r, ColumnDef.TRACE);
+                Coverage coverage = materializer.materialize(r, ColumnDef.COVERAGE_PATH);
 
                 inputCounts.merge(inputShape, 1, Integer::sum);
-                pathInputCounts.computeIfAbsent(trace, k -> new HashMap<>()).merge(inputShape, 1, Integer::sum);
+                pathInputCounts.computeIfAbsent(coverage, k -> new HashMap<>()).merge(inputShape, 1, Integer::sum);
             }
         }
 
         @Override
-        public Double compute(Trace trace) {
-            return calculateCoverageRarity(trace);
+        public Double compute(Coverage coverage) {
+            return calculateCoverageRarity(coverage);
         }
 
-        private double calculateCoverageRarity(Trace trace) {
+        private double calculateCoverageRarity(Coverage coverage) {
             /*
              * Paths that are hit rarely across all input shapes get higher scores.
              * We debias over input shapes to account for fuzzer biasing certain shapes.
@@ -269,7 +269,7 @@ public class KeyHeuristics {
             double sum = 0.0;
             int shapeCount = 0;
 
-            var inputCountsOfCurrentPath = pathInputCounts.getOrDefault(trace, Map.of());
+            var inputCountsOfCurrentPath = pathInputCounts.getOrDefault(coverage, Map.of());
             for (Shape inputShape : inputCounts.keySet()) {
                 int inputCount = inputCounts.getOrDefault(inputShape, 0);
                 if (inputCount == 0)

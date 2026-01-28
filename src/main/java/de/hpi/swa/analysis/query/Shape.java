@@ -1,9 +1,11 @@
-package de.hpi.swa.generator;
+package de.hpi.swa.analysis.query;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import de.hpi.swa.generator.Universe;
+import de.hpi.swa.generator.Value;
 import de.hpi.swa.generator.Value.ObjectId;
 
 public sealed interface Shape {

@@ -1,5 +1,6 @@
 package de.hpi.swa.analysis.operations;
 
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
 import de.hpi.swa.analysis.query.GroupLimitSpec;
 
@@ -49,7 +50,7 @@ public final class GroupLimiter {
         }
     }
 
-    private static <K> void limitChildren(ResultGroup<K, ?> node, int maxGroups) { 
+    private static <K extends GroupKey> void limitChildren(ResultGroup<K, ?> node, int maxGroups) {
         Map<K, ResultGroup<?, K>> children = node.children();
 
         if (maxGroups == -1 || children.size() <= maxGroups) {

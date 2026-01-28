@@ -1,6 +1,8 @@
 package de.hpi.swa.analysis.query;
 
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
+import de.hpi.swa.analysis.query.ColumnDef.AggregationRef;
 import de.hpi.swa.analysis.operations.Materializer;
 import de.hpi.swa.generator.Runner.RunResult;
 
@@ -22,6 +24,11 @@ public sealed interface FilterSpec {
         }
 
         record SingleColumnFilter<T>(ColumnDef<T> column, Predicate<T> predicate) implements RowFilter {
+            public SingleColumnFilter {
+                if (column instanceof AggregationRef) {
+                    throw new IllegalArgumentException("AggregationRef cannot be used in RowFilter");
+                }
+            }
         }
 
         static RowFilter.And and(RowFilter... filters) {
@@ -63,6 +70,9 @@ public sealed interface FilterSpec {
         record Not(GroupFilter filter) implements GroupFilter {
         }
 
+        record KeyFilter<T>(ColumnDef<T> keyColumn, Predicate<T> predicate) implements GroupFilter {
+        }
+
         record AggregationFilter<T>(String aggregationName, Predicate<T> predicate) implements GroupFilter {
         }
 
@@ -87,12 +97,21 @@ public sealed interface FilterSpec {
                     v -> v == null ? expected == null : v.equals(expected));
         }
 
+        static <T> GroupFilter.KeyFilter<T> keyEquals(ColumnDef<T> keyColumn, T expected) {
+            return new GroupFilter.KeyFilter<>(keyColumn,
+                    v -> v == null ? expected == null : v.equals(expected));
+        }
+
         static <T> GroupFilter.AggregationFilter<T> greaterThan(String aggregationName, Comparable<T> threshold) {
             return new GroupFilter.AggregationFilter<>(aggregationName, v -> v != null && threshold.compareTo(v) > 0);
         }
 
         static <T> GroupFilter.AggregationFilter<T> lessThan(String aggregationName, Comparable<T> threshold) {
             return new GroupFilter.AggregationFilter<>(aggregationName, v -> v != null && threshold.compareTo(v) < 0);
+        }
+
+        static <T> GroupFilter.KeyFilter<T> keyPredicate(ColumnDef<T> keyColumn, Predicate<T> predicate) {
+            return new GroupFilter.KeyFilter<>(keyColumn, predicate);
         }
 
         static <T> GroupFilter.AggregationFilter<T> predicate(String aggregationName, Predicate<T> predicate) {
@@ -125,7 +144,7 @@ public sealed interface FilterSpec {
         };
     }
 
-    static boolean testGroup(GroupFilter filter, ResultGroup<?, ?> group) {
+    static <K extends GroupKey, P extends GroupKey> boolean testGroup(GroupFilter filter, ResultGroup<K, P> group) {
         Map<String, Object> aggregations = group.aggregations();
         return switch (filter) {
             case GroupFilter.And(GroupFilter[] filters) ->
@@ -136,6 +155,38 @@ public sealed interface FilterSpec {
 
             case GroupFilter.Not(GroupFilter f) ->
                 !testGroup(f, group);
+
+            case GroupFilter.KeyFilter(var keyColumn, var predicate) -> {
+                P key = group.groupKey();
+                @SuppressWarnings("unchecked")
+                var pred = (Predicate<Object>) predicate;
+                switch (key) {
+                    case GroupKey.Root root -> {
+                        yield true;
+                    }
+                    case GroupKey.Single<?> singleKey -> {
+                        ColumnDef<?> col = singleKey.column();
+                        if (!col.equals(keyColumn)) {
+                            throw new IllegalArgumentException(
+                                    "KeyFilter keyColumn '" + keyColumn + "' does not match column name '"
+                                            + col.name()
+                                            + "' of Single group key");
+                        }
+                        Object value = singleKey.value();
+                        yield pred.test(value);
+                    }
+                    case GroupKey.Composite compositeKey -> {
+                        Object value = compositeKey.parts().stream()
+                                .filter(part -> part.column().equals(keyColumn))
+                                .findFirst()
+                                .map(part -> part.value())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                        "KeyFilter keyColumnName '" + keyColumn
+                                                + "' not found in composite key"));
+                        yield pred.test(value);
+                    }
+                }
+            }
 
             case GroupFilter.AggregationFilter(var aggName, var predicate) -> {
                 Object value = aggregations.get(aggName);

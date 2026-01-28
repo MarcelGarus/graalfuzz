@@ -46,11 +46,16 @@ public record AnalysisResult(
         if (group.groupingSpec() != null) {
             columnName = switch (group.groupingSpec()) {
                 case de.hpi.swa.analysis.query.GroupingSpec.Single<?> s -> s.column().name();
-                case de.hpi.swa.analysis.query.GroupingSpec.Composite c -> 
+                case de.hpi.swa.analysis.query.GroupingSpec.Composite c ->
                     c.columns().stream()
                         .map(col -> col.name())
                         .reduce((a, b) -> a + ", " + b)
                         .orElse("");
+                case de.hpi.swa.analysis.query.GroupingSpec.Hierarchical h ->
+                    h.columns().stream()
+                            .map(col -> col.name())
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("");
             };
         }
 

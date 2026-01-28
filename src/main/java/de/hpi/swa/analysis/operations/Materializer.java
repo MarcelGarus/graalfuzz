@@ -23,7 +23,7 @@ public final class Materializer {
      */
     private final Map<RunResult, Map<ColumnDef<?>, Object>> rowCache = new IdentityHashMap<>();
 
-    public void prepareAll(List<ColumnDef<?>> defs, List<RunResult> results, Pool pool) {
+    public void prepareAll(LinkedHashSet<ColumnDef<?>> defs, List<RunResult> results, Pool pool) {
         for (ColumnDef<?> def : defs) {
             if (def instanceof Preparable preparable && !preparable.isPrepared()) {
                 preparable.prepare(results, pool, this);
@@ -64,6 +64,10 @@ public final class Materializer {
                 }
                 yield preparedRowDef.compute(row);
             }
+
+            case ColumnDef.AggregationRef<T> aggRef ->
+                throw new IllegalStateException(
+                        "Cannot materialize AggregationRef column '" + column.name() + "' for individual rows.");
         };
 
         perRowCache.put(column, result);

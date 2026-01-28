@@ -74,6 +74,10 @@ public class ConsoleLogger implements ResultLogger {
                     .map(col -> col.name())
                     .reduce((a, b) -> a + ", " + b)
                     .orElse("");
+            case GroupingSpec.Hierarchical h -> h.columns().stream()
+                    .map(col -> col.name())
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("");
         };
     }
 

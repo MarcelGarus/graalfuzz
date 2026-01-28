@@ -7,13 +7,13 @@ import de.hpi.swa.generator.Runner.RunResult;
 
 import java.util.List;
 
-public final class Scorer {
+public final class GroupScorer {
 
     public static final String GROUP_SCORE_AGG = "GroupScore";
 
     public static void computeGroupScores(ResultGroup<?, ?> node, ScoringSpec scoring, Materializer materializer) {
         node.forEachGroup(group -> {
-            List<ColumnDef<?>> keyColumns = group.keyColumns();
+            List<ColumnDef<?>> keyColumns = group.allKeyColumns();
             if (keyColumns.isEmpty()) {
                 group.aggregations().put(GROUP_SCORE_AGG, 0.0);
                 return;
@@ -28,27 +28,20 @@ public final class Scorer {
 
                 if (heuristic instanceof ColumnDef.PreparableKeyColumn<?, ?> keyHeuristic) {
                     ColumnDef<?> keySource = keyHeuristic.keySource();
+                    // Check if any of the group's current keys match the keyHeuristic. If so we can
+                    // take any run result and retrieve its value and it will be the same for all
+                    // rows in this group.
                     if (!keyColumns.contains(keySource)) {
                         continue;
                     }
                 }
 
-                if (!group.results().isEmpty()) {
-                    RunResult anyRow = group.results().get(0);
+                RunResult anyRow = findFirstResultDFS(group);
+                if (anyRow != null) {
                     Object value = materializer.materialize(anyRow, heuristic);
                     if (value instanceof Number num) {
                         score += num.doubleValue() * weight;
                         totalWeight += weight;
-                    }
-                } else if (!group.children().isEmpty()) {
-                    var firstChild = group.children().values().iterator().next();
-                    if (!firstChild.results().isEmpty()) {
-                        RunResult anyRow = firstChild.results().get(0);
-                        Object value = materializer.materialize(anyRow, heuristic);
-                        if (value instanceof Number num) {
-                            score += num.doubleValue() * weight;
-                            totalWeight += weight;
-                        }
                     }
                 }
             }
@@ -56,5 +49,20 @@ public final class Scorer {
             double normalizedScore = totalWeight > 0 ? score / totalWeight : 0.0;
             group.aggregations().put(GROUP_SCORE_AGG, normalizedScore);
         });
+    }
+
+    private static RunResult findFirstResultDFS(ResultGroup<?, ?> group) {
+        if (!group.results().isEmpty()) {
+            return group.results().get(0);
+        }
+
+        for (var child : group.children().values()) {
+            RunResult result = findFirstResultDFS(child);
+            if (result != null) {
+                return result;
+            }
+        }
+        
+        return null;
     }
 }

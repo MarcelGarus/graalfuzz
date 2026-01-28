@@ -1,5 +1,6 @@
 package de.hpi.swa.analysis.operations;
 
+import de.hpi.swa.analysis.operations.Grouping.GroupKey;
 import de.hpi.swa.analysis.operations.Grouping.ResultGroup;
 import de.hpi.swa.analysis.query.ColumnDef;
 import de.hpi.swa.analysis.query.GroupSortSpec;
@@ -41,7 +42,7 @@ public final class Sorter {
         return result;
     }
 
-    public static <T> void sortGroups(ResultGroup<T, ?> node, List<GroupSortSpec> sortSpecs) {
+    public static <K extends GroupKey> void sortGroups(ResultGroup<K, ?> node, List<GroupSortSpec> sortSpecs) {
         if (!node.children().isEmpty()) {
             var rawChildren = node.children();
 
@@ -63,6 +64,15 @@ public final class Sorter {
         for (GroupSortSpec spec : sortSpecs) {
             Object v1 = g1.aggregations().get(spec.aggregationName());
             Object v2 = g2.aggregations().get(spec.aggregationName());
+            if (v1 == null && v2 == null) {
+                continue;
+            }
+            if (v1 == null) {
+                return spec.ascending() ? -1 : 1;
+            }
+            if (v2 == null) {
+                return spec.ascending() ? 1 : -1;
+            }
 
             int c = spec.compare(v1, v2);
             if (c != 0) {
