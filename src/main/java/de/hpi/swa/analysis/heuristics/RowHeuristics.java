@@ -1,6 +1,11 @@
 package de.hpi.swa.analysis.heuristics;
 
+import de.hpi.swa.analysis.operations.Materializer;
+import de.hpi.swa.analysis.query.ColumnDef.PreparableRowColumn;
+import de.hpi.swa.generator.Pool;
+import de.hpi.swa.generator.Runner;
 import de.hpi.swa.generator.Runner.RunResult;
+import de.hpi.swa.generator.Universe;
 import de.hpi.swa.generator.Value;
 
 import java.util.ArrayList;
@@ -8,14 +13,30 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class ItemHeuristics {
+/**
+ * Row-level heuristics that compute scores for individual RunResults.
+ * These are cached per row during materialization.
+ */
+public class RowHeuristics {
+    public static final MinimalInput MINIMAL_INPUT = new MinimalInput();
+    public static final MinimalOutput MINIMAL_OUTPUT = new MinimalOutput();
 
-    public static class MinimalInput implements Heuristic.ItemHeuristic {
-        /* Minimal inputs are simpler and easier to understand */
+    /**
+     * Minimal inputs are simpler and easier to understand.
+     * Score is normalized so smaller input = higher score.
+     */
+    public static class MinimalInput extends PreparableRowColumn<Double> {
+
+        private static final ColumnId<Double> ID = ColumnId.of("MinimalInput");
+
         private final Normalizer.NormalizationStrategy normalizer = new Normalizer.MinMaxNormalization();
 
+        public MinimalInput() {
+            super(ID);
+        }
+
         @Override
-        public void prepare(java.util.List<RunResult> results, de.hpi.swa.generator.Pool pool) {
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             List<Double> scores = new ArrayList<>();
             for (RunResult result : results) {
                 scores.add(scoreUnnormalized(result));
@@ -24,35 +45,26 @@ public class ItemHeuristics {
         }
 
         @Override
-        public double score(RunResult item) {
-            return normalizer.normalize(scoreUnnormalized(item));
+        public Double compute(RunResult row) {
+            return normalizer.normalize(scoreUnnormalized(row));
         }
 
         private double scoreUnnormalized(RunResult item) {
-            // Invert because the smaller the size, the better the score should be
-            return -calculateSize(item.getInput(), item.getUniverse(), new HashSet<>());
+            return -calculateSize(item.input(), item.universe(), new HashSet<>());
         }
 
-        @Override
-        public String getName() {
-            return "Minimal Input";
-        }
-
-        private double calculateSize(Value val, de.hpi.swa.generator.Universe universe, Set<Integer> visited) {
-            if (val == null) {
+        private double calculateSize(Value val, Universe universe, Set<Integer> visited) {
+            if (val == null)
                 return 0.0;
-            }
+
             return switch (val) {
                 case Value.Null n -> 0.0;
                 case Value.Boolean b -> 0.0;
                 case Value.Int num -> {
-                    // Avoid log10(0) which returns -Infinity and log10 of negative numbers is NaN
                     int absValue = Math.max(Math.abs(num.value()), 1);
                     yield Math.log10(absValue);
                 }
                 case Value.Double num -> {
-                    // Avoid log10(0) which returns -Infinity and log10 of negative numbers is NaN
-                    // and also for very small numbers
                     double absValue = Math.max(Math.abs(num.value()), 1.0);
                     yield Math.log10(absValue);
                 }
@@ -72,12 +84,22 @@ public class ItemHeuristics {
         }
     }
 
-    public static class MinimalOutput implements Heuristic.ItemHeuristic {
-        /* Minimal outputs are simpler and easier to understand. */
+    /**
+     * Minimal outputs are simpler and easier to understand.
+     * Score is normalized so smaller output = higher score.
+     */
+    public static class MinimalOutput extends PreparableRowColumn<Double> {
+
+        private static final ColumnId<Double> ID = ColumnId.of("MinimalOutput");
+
         private final Normalizer.NormalizationStrategy normalizer = new Normalizer.MinMaxNormalization();
 
+        public MinimalOutput() {
+            super(ID);
+        }
+
         @Override
-        public void prepare(java.util.List<RunResult> results, de.hpi.swa.generator.Pool pool) {
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             List<Double> scores = new ArrayList<>();
             for (RunResult result : results) {
                 scores.add(scoreUnnormalized(result));
@@ -86,22 +108,16 @@ public class ItemHeuristics {
         }
 
         @Override
-        public double score(RunResult item) {
-            return normalizer.normalize(scoreUnnormalized(item));
+        public Double compute(RunResult row) {
+            return normalizer.normalize(scoreUnnormalized(row));
         }
 
         private double scoreUnnormalized(RunResult item) {
-            // Invert because the smaller the size, the better the score should be
-            if (item.getOutput() instanceof de.hpi.swa.generator.Runner.FunctionResult.Normal n && n.value() != null) {
-                return -n.value().length();
-            } else {
-                return 0.0;
-            }
-        }
-
-        @Override
-        public String getName() {
-            return "Minimal Output";
+            return switch (item.output()) {
+                case Runner.FunctionResult.Normal(var typeName, var value) ->
+                    value != null ? -value.length() : 0.0;
+                case Runner.FunctionResult.Crash(var msg, var stackTrace) -> 0.0;
+            };
         }
     }
 }

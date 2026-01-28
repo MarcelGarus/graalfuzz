@@ -1,44 +1,56 @@
 package de.hpi.swa.analysis.heuristics;
 
-import de.hpi.swa.analysis.grouping.GroupKey;
-import de.hpi.swa.generator.Shape;
+import de.hpi.swa.analysis.operations.Materializer;
+import de.hpi.swa.analysis.query.ColumnDef;
+import de.hpi.swa.analysis.query.Shape;
+import de.hpi.swa.coverage.Coverage;
+import de.hpi.swa.analysis.query.ColumnDef.PreparableKeyColumn;
 import de.hpi.swa.generator.Pool;
 import de.hpi.swa.generator.Runner.RunResult;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Key-level heuristics that compute scores based on key values
+ * (e.g. InputShape).
+ * These are cached per unique key value, reducing computation.
+ */
 public class KeyHeuristics {
 
-    public static class InputShapeSimplicity implements Heuristic.KeyHeuristic<GroupKey.InputShape> {
-        /* Simpler input shapes are easier to display and understand. */
+    /**
+     * Simpler input shapes are easier to display and understand.
+     * Score is normalized and inverted so simpler = higher score.
+     */
+    public static class InputShapeSimplicity extends PreparableKeyColumn<Shape, Double> {
+
+        public static final ColumnId<Double> ID = ColumnId.of("InputShapeSimplicity");
+
         private final Normalizer.NormalizationStrategy normalizer = new Normalizer.MinMaxNormalization();
 
-        @Override
-        public String getName() {
-            return "Input Simplicity";
+        public InputShapeSimplicity() {
+            super(ID, ColumnDef.INPUT_SHAPE);
         }
 
         @Override
-        public void prepare(List<RunResult> results, Pool pool) {
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             List<Double> scores = new ArrayList<>();
             for (RunResult r : results) {
-                GroupKey.InputShape key = GroupKey.InputShape.from(r.getInput(), r.getUniverse());
-                scores.add(scoreUnnormalized(key));
+                Shape shape = materializer.materialize(r, ColumnDef.INPUT_SHAPE);
+                scores.add(scoreUnnormalized(shape));
             }
             normalizer.prepare(scores);
         }
 
         @Override
-        public double score(GroupKey.InputShape key) {
+        public Double compute(Shape key) {
             return normalizer.normalize(scoreUnnormalized(key));
         }
 
-        private double scoreUnnormalized(GroupKey.InputShape key) {
-            return -1.0 * calculateComplexity(key.shape()); // Invert to maximize score for simpler shapes
+        private double scoreUnnormalized(Shape key) {
+            return -calculateComplexity(key);
         }
 
         private int calculateComplexity(Shape shape) {
@@ -56,33 +68,34 @@ public class KeyHeuristics {
         }
     }
 
-    public static class OutputShapeDiversity implements Heuristic.KeyHeuristic<GroupKey.InputShape> {
-        /*
-         * Inputs where output shapes are unevenly distributed indicate existing edge
-         * cases.
-         */
+    /**
+     * Inputs where output shapes are unevenly distributed indicate edge cases.
+     * High diversity score = more interesting input shape.
+     */
+    public static class OutputShapeDiversity extends PreparableKeyColumn<Shape, Double> {
 
-        private final Map<GroupKey.InputShape, Double> variances = new HashMap<>();
+        public static final ColumnId<Double> ID = ColumnId.of("OutputShapeDiversity");
 
-        @Override
-        public String getName() {
-            return "Output Shape Diversity";
+        private final Map<Shape, Double> variances = new HashMap<>();
+
+        public OutputShapeDiversity() {
+            super(ID, ColumnDef.INPUT_SHAPE);
         }
 
         @Override
-        public void prepare(List<RunResult> results, Pool pool) {
-            Map<GroupKey.InputShape, Map<GroupKey.OutputShape, Integer>> inputOutputCounts = new HashMap<>();
-            Map<GroupKey.InputShape, Integer> inputCounts = new HashMap<>();
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
+            Map<Shape, Map<String, Integer>> inputOutputCounts = new HashMap<>();
+            Map<Shape, Integer> inputCounts = new HashMap<>();
 
             for (RunResult r : results) {
-                GroupKey.InputShape is = GroupKey.InputShape.from(r.getInput(), r.getUniverse());
-                GroupKey.OutputShape os = GroupKey.OutputShape.from(r.getTrace());
+                Shape inputShape = materializer.materialize(r, ColumnDef.INPUT_SHAPE);
+                String outputType = materializer.materialize(r, ColumnDef.OUTPUT_TYPE);
 
-                inputOutputCounts.computeIfAbsent(is, k -> new HashMap<>()).merge(os, 1, Integer::sum);
-                inputCounts.merge(is, 1, Integer::sum);
+                inputOutputCounts.computeIfAbsent(inputShape, k -> new HashMap<>()).merge(outputType, 1, Integer::sum);
+                inputCounts.merge(inputShape, 1, Integer::sum);
             }
 
-            for (GroupKey.InputShape inputShape : inputOutputCounts.keySet()) {
+            for (Shape inputShape : inputOutputCounts.keySet()) {
                 variances.put(inputShape, calculateOutputDiversity(
                         inputOutputCounts.getOrDefault(inputShape, Map.of()).values(),
                         inputCounts.getOrDefault(inputShape, 0)));
@@ -90,23 +103,12 @@ public class KeyHeuristics {
         }
 
         @Override
-        public double score(GroupKey.InputShape key) {
-            if (variances.containsKey(key)) {
-                // numbers between 0 and 1 can have a maximum variance of 0.25
-                double normalizationFactor = 4;
-                return variances.get(key) * normalizationFactor;
-            } else {
-                return 0.5;
-            }
+        public Double compute(Shape key) {
+            // Variance between 0 and 0.25, normalize to 0-1
+            return Math.min(variances.getOrDefault(key, 0.0) * 4.0, 1.0);
         }
 
-        public void print() {
-            for (var entry : variances.entrySet()) {
-                System.out.println("InputShapeDiversity - InputShape: " + entry.getKey() + " Variance: " + entry.getValue());
-            }
-        }
-
-        private double calculateOutputDiversity(Collection<Integer> N_i, Integer N) {
+        private double calculateOutputDiversity(java.util.Collection<Integer> N_i, Integer N) {
             if (N == 0 || N_i.isEmpty())
                 return 0.0;
 
@@ -119,62 +121,55 @@ public class KeyHeuristics {
 
             double variance = 0.0;
             for (double p : p_i) {
-                variance += (p - mean) * (p - mean);
+                variance += Math.pow(p - mean, 2);
             }
 
             return variance / inputShapeCount;
         }
     }
 
-    public static class InputValidity implements Heuristic.KeyHeuristic<GroupKey.InputShape> {
-        /*
-         * Inputs where all outputs fail should be penalized. But inputs where many
-         * outputs fail,
-         * but some succeed are interesting edge cases and should be scored highly.
-         */
+    /**
+     * Inputs where all outputs fail should be penalized. But inputs where many
+     * outputs fail,
+     * but some succeed are interesting edge cases and should be scored highly.
+     */
+    public static class InputValidity extends PreparableKeyColumn<Shape, Double> {
 
-        private final Map<GroupKey.InputShape, Double> scores = new HashMap<>();
+        public static final ColumnId<Double> ID = ColumnId.of("InputValidity");
 
-        @Override
-        public String getName() {
-            return "Input Validity";
+        private final Map<Shape, Double> scores = new HashMap<>();
+
+        public InputValidity() {
+            super(ID, ColumnDef.INPUT_SHAPE);
         }
 
         @Override
-        public void prepare(List<RunResult> results, Pool pool) {
-            Map<GroupKey.InputShape, Map<GroupKey.OutputShape, Integer>> inputOutputCounts = new HashMap<>();
-            Map<GroupKey.InputShape, Integer> inputCounts = new HashMap<>();
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
+            Map<Shape, Map<String, Integer>> inputOutputCounts = new HashMap<>();
 
             for (RunResult r : results) {
-                GroupKey.InputShape is = GroupKey.InputShape.from(r.getInput(), r.getUniverse());
-                GroupKey.OutputShape os = GroupKey.OutputShape.from(r.getTrace());
+                Shape inputShape = materializer.materialize(r, ColumnDef.INPUT_SHAPE);
+                String outputType = materializer.materialize(r, ColumnDef.OUTPUT_TYPE);
 
-                inputOutputCounts.computeIfAbsent(is, k -> new HashMap<>()).merge(os, 1, Integer::sum);
-                inputCounts.merge(is, 1, Integer::sum);
+                inputOutputCounts.computeIfAbsent(inputShape, k -> new HashMap<>()).merge(outputType, 1, Integer::sum);
             }
 
-            for (GroupKey.InputShape inputShape : inputOutputCounts.keySet()) {
+            for (Shape inputShape : inputOutputCounts.keySet()) {
                 scores.put(inputShape, calculateScore(inputOutputCounts.get(inputShape)));
             }
         }
 
         @Override
-        public double score(GroupKey.InputShape key) {
+        public Double compute(Shape key) {
             return scores.getOrDefault(key, 0.5);
         }
 
-        public void print() {
-            for (var entry : scores.entrySet()) {
-                System.out.println("InputValidity - InputShape: " + entry.getKey() + " Score: " + entry.getValue());
-            }
-        }
-
-        private double calculateScore(Map<GroupKey.OutputShape, Integer> outputCounts) {
+        private double calculateScore(Map<String, Integer> outputCounts) {
             int crashCount = 0;
             int totalCount = 0;
-            for (GroupKey.OutputShape os : outputCounts.keySet()) {
-                int count = outputCounts.get(os);
-                if (os.value().equals("crash")) {
+            for (Map.Entry<String, Integer> entry : outputCounts.entrySet()) {
+                int count = entry.getValue();
+                if (entry.getKey().equals("Crash")) {
                     crashCount += count;
                 }
                 totalCount += count;
@@ -189,81 +184,76 @@ public class KeyHeuristics {
         }
     }
 
-    public static class PathSimplicity implements Heuristic.KeyHeuristic<GroupKey.PathHash> {
-        /* Short paths are interesting because they indicate edge cases */
+    /**
+     * Short paths are interesting because they indicate edge cases.
+     * Score is normalized and inverted so shorter = higher score.
+     */
+    public static class PathSimplicity extends PreparableKeyColumn<Coverage, Double> {
+
+        public static final ColumnId<Double> ID = ColumnId.of("PathSimplicity");
 
         private final Normalizer.NormalizationStrategy normalizer = new Normalizer.MinMaxNormalization();
 
-        @Override
-        public String getName() {
-            return "Path Simplicity";
+        public PathSimplicity() {
+            super(ID, ColumnDef.COVERAGE_PATH);
         }
 
         @Override
-        public void prepare(List<RunResult> results, Pool pool) {
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             List<Double> pathLengths = new ArrayList<>();
             for (RunResult r : results) {
-                GroupKey.PathHash ph = GroupKey.PathHash.from(r.getTrace(), pool);
-                pathLengths.add(calculateSimplicity(ph));
+                Coverage coverage = materializer.materialize(r, ColumnDef.COVERAGE_PATH);
+                pathLengths.add(calculateSimplicity(coverage));
             }
             normalizer.prepare(pathLengths);
         }
 
         @Override
-        public double score(GroupKey.PathHash key) {
-            return normalizer.normalize(calculateSimplicity(key));
+        public Double compute(Coverage coverage) {
+            return normalizer.normalize(calculateSimplicity(coverage));
         }
 
-        private double calculateSimplicity(GroupKey.PathHash key) {
-            return -key.length(); // Invert to maximize score for shorter paths
+        private double calculateSimplicity(Coverage coverage) {
+            return -coverage.getCovered().size();
         }
     }
 
-    public static class CoverageRarity implements Heuristic.KeyHeuristic<GroupKey.PathHash> {
-        /*
-         * Rare paths are interesting because they indicate edge cases.
-         * We uniformly debias over input shapes to remove fuzzer bias.
-         */
+    /**
+     * Rare paths are interesting because they indicate edge cases.
+     * We uniformly debias over input shapes to remove fuzzer biasing certain
+     * shapes.
+     */
+    public static class CoverageRarity extends PreparableKeyColumn<Coverage, Double> {
 
-        private final Map<GroupKey.InputShape, Integer> inputCounts = new HashMap<>();
-        private final Map<GroupKey.PathHash, Map<GroupKey.InputShape, Integer>> pathInputCounts = new HashMap<>();
+        public static final ColumnId<Double> ID = ColumnId.of("CoverageRarity");
 
-        @Override
-        public String getName() {
-            return "Coverage Rarity";
+        private final Map<Shape, Integer> inputCounts = new HashMap<>();
+        private final Map<Coverage, Map<Shape, Integer>> pathInputCounts = new HashMap<>();
+
+        public CoverageRarity() {
+            super(ID, ColumnDef.COVERAGE_PATH);
         }
 
         @Override
-        public void prepare(List<RunResult> results, Pool pool) {
+        protected void doPrepare(List<RunResult> results, Pool pool, Materializer materializer) {
             inputCounts.clear();
             pathInputCounts.clear();
 
             for (RunResult r : results) {
-                GroupKey.InputShape is = GroupKey.InputShape.from(r.getInput(), r.getUniverse());
-                GroupKey.PathHash ph = GroupKey.PathHash.from(r.getTrace(), pool);
+                Shape inputShape = materializer.materialize(r, ColumnDef.INPUT_SHAPE);
+                Coverage coverage = materializer.materialize(r, ColumnDef.COVERAGE_PATH);
 
-                inputCounts.merge(is, 1, Integer::sum);
-
-                pathInputCounts.computeIfAbsent(ph, k -> new HashMap<>()).merge(is, 1, Integer::sum);
-            }         
-        }
-
-        @Override
-        public double score(GroupKey.PathHash key) {
-            // It's already a probability between 0 and 1, so no normalization needed
-            return calculateCoverageRarity(key);
-        }
-
-        public void print() {
-            for (var entry : pathInputCounts.entrySet()) {
-                System.out.println("CoverageRarity - PathHash: " + entry.getKey() + " InputCounts: ");
-                for (var innerEntry : entry.getValue().entrySet()) {
-                    System.out.println("    " + innerEntry.getKey() + ": " + innerEntry.getValue());
-                }
+                inputCounts.merge(inputShape, 1, Integer::sum);
+                pathInputCounts.computeIfAbsent(coverage, k -> new HashMap<>()).merge(inputShape, 1, Integer::sum);
             }
         }
 
-        private double calculateCoverageRarity(GroupKey.PathHash path) {
+        @Override
+        public Double compute(Coverage coverage) {
+            return calculateCoverageRarity(coverage);
+        }
+
+        private double calculateCoverageRarity(Coverage coverage) {
             /*
              * Paths that are hit rarely across all input shapes get higher scores.
              * We debias over input shapes to account for fuzzer biasing certain shapes.
@@ -276,26 +266,26 @@ public class KeyHeuristics {
              * rarity.
              */
 
-            double sum = 0.0; // Σ_s P(path|input shape=s)
-            int shapeCount = 0; // |S|
+            double sum = 0.0;
+            int shapeCount = 0;
 
-            var inputCountsOfCurrentPath = pathInputCounts.getOrDefault(path, Map.of());
-            for (GroupKey.InputShape is : inputCounts.keySet()) {
-                int inputCount = inputCounts.getOrDefault(is, 0);
+            var inputCountsOfCurrentPath = pathInputCounts.getOrDefault(coverage, Map.of());
+            for (Shape inputShape : inputCounts.keySet()) {
+                int inputCount = inputCounts.getOrDefault(inputShape, 0);
                 if (inputCount == 0)
                     continue;
 
-                int inputPathCount = inputCountsOfCurrentPath.getOrDefault(is, 0);
+                int inputPathCount = inputCountsOfCurrentPath.getOrDefault(inputShape, 0);
 
-                sum += (double) inputPathCount / inputCount; // P(path|input shape=s)
+                sum += (double) inputPathCount / inputCount;
                 shapeCount++;
             }
 
             if (shapeCount == 0)
                 return 1.0;
 
-            double unbiasedPathHitRate = sum / shapeCount; // P(path)
-            return 1 - unbiasedPathHitRate; // P(not path)
+            double unbiasedPathHitRate = sum / shapeCount;
+            return 1 - unbiasedPathHitRate;
         }
     }
 }

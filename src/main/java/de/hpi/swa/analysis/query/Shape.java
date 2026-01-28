@@ -1,12 +1,15 @@
-package de.hpi.swa.generator;
+package de.hpi.swa.analysis.query;
 
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import de.hpi.swa.generator.Universe;
+import de.hpi.swa.generator.Value;
 import de.hpi.swa.generator.Value.ObjectId;
 
 public sealed interface Shape {
+
     record Null() implements Shape {
         @Override
         public String toString() {
@@ -128,6 +131,17 @@ public sealed interface Shape {
             }
             return result;
         }
+    }
+
+    public default String typeName() {
+        return switch (this) {
+            case ObjectShape o -> "object";
+            case Null n -> "null";
+            case Boolean b -> "boolean";
+            case Int i -> "int";
+            case Double d -> "double";
+            case StringShape s -> "string";
+        };
     }
 
     public static Shape fromValue(Value value, Universe universe) {
