@@ -16,7 +16,7 @@ public class RunResultAdapter implements JsonSerializer<Runner.RunResult>, JsonD
         JsonObject result = new JsonObject();
         
         result.add("universe", context.serialize(src.universe()));
-        result.add("input", context.serialize(src.input()));
+        result.add("input", context.serialize(src.input(), Value.class));
         result.add("didCrash", context.serialize(src.didCrash()));
 
         switch (src.output()) {
